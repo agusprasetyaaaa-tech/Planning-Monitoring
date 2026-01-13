@@ -1,0 +1,79 @@
+<script setup>
+import NexusLayout from '@/Layouts/NexusLayout.vue';
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import InputError from '@/Components/InputError.vue';
+
+defineOptions({ layout: NexusLayout });
+
+const props = defineProps({
+    customer: Object,
+    products: Array,
+    users: Array,
+});
+
+const form = useForm({
+    company_name: props.customer.company_name,
+    product_id: props.customer.product_id,
+    marketing_sales_id: props.customer.marketing_sales_id,
+});
+
+const submit = () => {
+    form.put(route('customers.update', props.customer.id));
+};
+</script>
+
+<template>
+    <Head title="Edit Customer" />
+
+    <div class="max-w-2xl mx-auto bg-white p-8 rounded-3xl shadow-sm border border-gray-100 font-sans">
+        <div class="flex items-center justify-between mb-8">
+            <h2 class="text-[18px] leading-[25px] font-semibold text-[rgb(15,23,42)]">Edit Customer</h2>
+            <Link :href="route('customers.index')" class="text-emerald-500 hover:text-emerald-600 font-medium text-sm">
+                Back to Customers
+            </Link>
+        </div>
+
+        <form @submit.prevent="submit" class="space-y-6">
+            <!-- Company Name -->
+            <div>
+                <label for="company_name" class="block text-[14px] leading-[17px] font-medium text-[rgb(30,41,59)] mb-2">Company Name</label>
+                <input id="company_name" type="text" v-model="form.company_name" required autofocus
+                    class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all text-sm"
+                />
+                <InputError class="mt-2" :message="form.errors.company_name" />
+            </div>
+
+            <!-- Product -->
+            <div>
+                <label for="product_id" class="block text-[14px] leading-[17px] font-medium text-[rgb(30,41,59)] mb-2">Product</label>
+                <select id="product_id" v-model="form.product_id" required
+                    class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all text-sm"
+                >
+                    <option value="">Select Product</option>
+                    <option v-for="product in products" :key="product.id" :value="product.id">{{ product.name }}</option>
+                </select>
+                <InputError class="mt-2" :message="form.errors.product_id" />
+            </div>
+
+            <!-- Marketing Sales -->
+            <div>
+                <label for="marketing_sales_id" class="block text-[14px] leading-[17px] font-medium text-[rgb(30,41,59)] mb-2">Marketing Sales</label>
+                <select id="marketing_sales_id" v-model="form.marketing_sales_id" required
+                    class="w-full px-4 py-2 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none transition-all text-sm"
+                >
+                    <option value="">Select User</option>
+                    <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }}</option>
+                </select>
+                <InputError class="mt-2" :message="form.errors.marketing_sales_id" />
+            </div>
+
+            <div class="flex items-end justify-end pt-4">
+                <button type="submit" :disabled="form.processing"
+                    class="px-6 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-md font-medium transition-all transform hover:scale-105"
+                >
+                    Update Customer
+                </button>
+            </div>
+        </form>
+    </div>
+</template>

@@ -1,0 +1,49 @@
+services:
+    laravel.test:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: planning-monitoring-laravel.test-1
+        command: [ "frankenphp", "run", "--config", "/app/Caddyfile" ]
+        ports:
+            - '${APP_PORT:-80}:80'
+            - '${VITE_PORT:-5175}:5175'
+        environment:
+            SERVER_NAME: "localhost"
+            FRANKENPHP_CONFIG: "root public/"
+            APP_URL: "http://localhost"
+            LARAVEL_SAIL: 1
+        volumes:
+            - '.:/app'
+            - './Caddyfile:/app/Caddyfile:ro'
+        networks:
+            - sail
+        depends_on:
+            - mysql
+
+    mysql:
+        image: 'mysql:8.4'
+        container_name: planning-monitoring-mysql-1
+        ports:
+            - '3309:3306'
+        environment:
+            MYSQL_ROOT_PASSWORD: 'password'
+            MYSQL_DATABASE: 'laravel'
+            MYSQL_USER: 'sail'
+            MYSQL_PASSWORD: 'password'
+        volumes:
+            - 'sail-mysql:/var/lib/mysql'
+        networks:
+            - sail
+        healthcheck:
+            test: [ "CMD", "mysqladmin", "ping", "-ppassword" ]
+            retries: 3
+            timeout: 5s
+
+networks:
+    sail:
+        driver: bridge
+
+volumes:
+    sail-mysql:
+        driver: local

@@ -1,0 +1,14 @@
+{
+	frankenphp
+}
+
+:80 {
+	# Set the root to the public directory
+	root * public/
+	
+	# Enable compression
+	encode zstd br
+
+	# Enable PHP Server (FrankenPHP)
+	php_server
+}

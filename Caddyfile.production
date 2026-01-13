@@ -1,0 +1,37 @@
+{
+	frankenphp
+	# Email untuk Let's Encrypt notifications
+	email admin@yourdomain.com
+}
+
+# GANTI 'yourdomain.com' dengan domain Anda yang sebenarnya!
+yourdomain.com www.yourdomain.com {
+	# Root directory
+	root * public/
+	
+	# Compression
+	encode zstd br gzip
+	
+	# Security headers
+	header {
+		# Security
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		
+		# Remove server info
+		-Server
+		-X-Powered-By
+	}
+	
+	# PHP Server (FrankenPHP magic)
+	php_server
+	
+	# Logging
+	log {
+		output file /var/log/caddy/access.log
+		format json
+	}
+}

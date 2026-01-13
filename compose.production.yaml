@@ -1,0 +1,90 @@
+# Production overrides untuk compose.yaml
+# Usage: docker compose -f compose.yaml -f compose.production.yaml up -d
+
+services:
+  laravel.test:
+    container_name: planning-monitoring-app
+    command: [ "frankenphp", "run", "--config", "/app/Caddyfile.production" ]
+
+    # Restart policy untuk production
+    restart: unless-stopped
+
+    # Resource limits (sesuaikan dengan server Anda)
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    # Environment production
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      LOG_LEVEL: warning
+      SESSION_DRIVER: database
+      CACHE_DRIVER: redis # Jika pakai Redis
+      QUEUE_CONNECTION: database
+
+    # Mount Caddyfile production
+    volumes:
+      - '.:/app'
+      - './Caddyfile.production:/app/Caddyfile.production:ro'
+      - 'caddy_data:/data' # Persistent SSL certificates
+      - 'caddy_config:/config' # Persistent Caddy config
+
+    # Port untuk production (tanpa Vite)
+    ports:
+      - '80:80'
+      - '443:443'
+
+    # Healthcheck yang lebih strict
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  mysql:
+    container_name: planning-monitoring-db
+    restart: unless-stopped
+
+    # PENTING: Jangan expose port di production!
+    # ports: []  # Remove port exposure
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+    # Healthcheck
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  # Optional: Redis untuk caching (production optimization)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: planning-monitoring-redis
+  #   restart: unless-stopped
+  #   networks:
+  #     - sail
+  #   volumes:
+  #     - 'redis_data:/data'
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+
+volumes:
+  caddy_data:
+    driver: local
+  caddy_config:
+    driver: local
+  # redis_data:
+  #   driver: local
