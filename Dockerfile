@@ -3,11 +3,18 @@ FROM dunglas/frankenphp:php8.4
 ENV SERVER_NAME=":80"
 WORKDIR /app
 
-# Create sail user agar sinkron dengan permission Laravel
-RUN groupadd --force -g 1000 sail && \
-    useradd -ms /bin/bash --no-user-group -g 1000 -u 1337 sail
+# 1. Install System Dependencies & Database Client
+# (NodeJS KITA HAPUS KARENA SUDAH TIDAK DIPERLUKAN LAGI)
+RUN apt-get update && apt-get install -y \
+    git \
+    zip \
+    unzip \
+    mariadb-client \
+    curl \
+    gnupg \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install extensions
+# 2. Install PHP Extensions
 RUN install-php-extensions \
     pdo_mysql \
     mbstring \
@@ -17,34 +24,21 @@ RUN install-php-extensions \
     gd \
     zip \
     opcache \
-    redis \
     intl
 
-# Install Node.js (Latest LTS)
-RUN apt-get update && apt-get install -y ca-certificates curl gnupg && \
-    mkdir -p /etc/apt/keyrings && \
-    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg && \
-    NODE_MAJOR=22 && \
-    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list && \
-    apt-get update && \
-    apt-get install -y nodejs && \
-    npm install -g npm@latest && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-
-# Install Composer
+# 3. Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy files
+# 4. Copy Seluruh Kode Aplikasi (TERMASUK folder public/build yang barusan kita buat)
 COPY . /app
 
-# Set permission (Penting!)
-RUN chown -R sail:sail /app && \
-    chmod -R 775 /app/storage /app/bootstrap/cache
+# 5. Install Library PHP
+RUN composer install --no-dev --optimize-autoloader --no-interaction
 
-# Switch to root sebentar untuk install, lalu balik ke sail
-USER sail
+# 6. (LANGKAH NPM KITA HAPUS TOTAL AGAR VPS TIDAK BERAT)
 
-# Perintah CMD disesuaikan: Jika Octane belum diinstall, kita pakai mode standar dulu
-# Agar container tidak langsung mati
-CMD ["frankenphp", "php-server"]
+# 7. Atur Permission
+RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache
+
+# 8. Jalankan Server
+CMD ["frankenphp", "run", "--config", "/app/Caddyfile"]
