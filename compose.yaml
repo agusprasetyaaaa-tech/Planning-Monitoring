@@ -6,8 +6,8 @@ services:
         # Restart otomatis jika server reboot
         restart: always
         ports:
-            # Port 80 container dibuka ke Port 80 VPS
-            - '80:80'
+            # Port 8081 container dibuka ke Port 80 VPS
+            - '8081:80'
         environment:
             # Nilai diambil dari Portainer Environment Variables
             APP_KEY: ${APP_KEY}
