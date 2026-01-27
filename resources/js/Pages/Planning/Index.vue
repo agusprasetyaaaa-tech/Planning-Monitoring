@@ -10,6 +10,7 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import DangerButton from '@/Components/DangerButton.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import axios from 'axios';
+import NexusCalendar from '@/Components/NexusCalendar.vue';
 
 
 const page = usePage();
@@ -141,6 +142,11 @@ const props = defineProps({
     users: Array,
 });
 
+const handleMonthChange = ({ month, year }) => {
+    selectedMonth.value = month;
+    selectedYear.value = year;
+};
+
 // Search and filter state
 const search = ref(props.filters?.search || '');
 const filterTeam = ref(props.filters?.team || '');
@@ -148,6 +154,27 @@ const filterUser = ref(props.filters?.user || '');
 // Default perPage to 'all' for All Planning tab, otherwise use filter value or '10'
 const currentTabValue = props.filters?.tab || 'all';
 const perPage = ref(currentTabValue === 'all' ? 'all' : (props.filters?.perPage || '10'));
+
+// View Mode (Table/Calendar)
+const viewMode = ref('table');
+const switchViewMode = (mode) => {
+    viewMode.value = mode;
+    
+    if (mode === 'calendar' && currentTab.value !== 'all') {
+        changeTab('all');
+    } else if (mode === 'table' && currentTab.value === 'all') {
+        // If moving back to table from 'all' tab, reset to default week (current week)
+        // We do this by triggering a visit without the tab parameter 
+        router.get(route('planning.index'), {
+            ...props.filters,
+            tab: undefined,
+            perPage: 10,
+        }, {
+            preserveState: false,
+            replace: true
+        });
+    }
+};
 
 // Month & Year state
 const selectedMonth = ref(props.filters.month ? parseInt(props.filters.month) : new Date().getMonth() + 1);
@@ -1405,6 +1432,11 @@ onUnmounted(() => {
 });
 
 onMounted(() => {
+    // Add check: If initial viewMode is calendar, ensure currentTab is 'all'
+    if (viewMode.value === 'calendar' && currentTab.value !== 'all') {
+        changeTab('all');
+    }
+
     startAutoRefresh();
     setTimeout(() => {
         // Prevent showing if:
@@ -1553,7 +1585,7 @@ const formatDate = (dateStr) => {
         <div class="flow-root rounded-xl sm:rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
             <!-- Tabs -->
             <!-- Tabs - Enhanced -->
-            <div class="border-b border-gray-200 bg-white px-4 sm:px-6">
+            <div v-if="viewMode === 'table'" class="border-b border-gray-200 bg-white px-4 sm:px-6">
                 <nav class="-mb-px flex space-x-6 sm:space-x-8 overflow-x-auto scrollbar-none" aria-label="Tabs">
                     <button v-for="tab in tabs" :key="tab.id"
                         @click="changeTab(tab.id)"
@@ -1631,7 +1663,28 @@ const formatDate = (dateStr) => {
                         </div>
 
                         <!-- Right: Actions Group -->
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-3">
+                            <!-- View Mode Toggle -->
+                            <div class="flex p-1 bg-gray-100 rounded-xl">
+                                <button @click="switchViewMode('table')" 
+                                        :class="viewMode === 'table' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                                        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                    </svg>
+                                    <span class="hidden md:inline">Table</span>
+                                </button>
+                                <button @click="switchViewMode('calendar')" 
+                                        :class="viewMode === 'calendar' ? 'bg-white text-emerald-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                                        class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    <span class="hidden md:inline">Calendar</span>
+                                </button>
+                            </div>
+
+                            <div class="w-px h-6 bg-gray-200 hidden sm:block"></div>
                             <!-- Reset Limits Button (Super Admin Only) -->
                             <button v-if="isSuperAdmin" 
                                     @click="confirmResetAllLimits"
@@ -1662,9 +1715,10 @@ const formatDate = (dateStr) => {
                 </div>
             </div>
 
-            
-            <!-- Mobile Card View (Modern Professional) -->
-            <div class="block sm:hidden space-y-4 pb-12">
+            <!-- View Content -->
+            <div v-show="viewMode === 'table'">
+                <!-- Mobile Card View (Modern Professional) -->
+                <div class="block sm:hidden space-y-4 pb-12">
                 <div v-for="(customer, index) in customers.data" :key="customer.id" 
                      @click="openDetail(customer)"
                      class="bg-white rounded-2xl shadow-[0_2px_15px_-3px_rgba(0,0,0,0.07),0_10px_20px_-2px_rgba(0,0,0,0.04)] ring-1 ring-gray-100 overflow-hidden relative transition-transform active:scale-[0.99] duration-200"
@@ -2485,6 +2539,21 @@ const formatDate = (dateStr) => {
                             : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'"
                      />
                 </div>
+            </div>
+            </div>
+
+            <!-- Calendar View -->
+            <div v-if="viewMode === 'calendar'" class="p-4 sm:p-6 bg-gray-50/50">
+                <NexusCalendar 
+                    :customers="customers.data" 
+                    :month="selectedMonth" 
+                    :year="selectedYear"
+                    :getStatus="getPlanningStatus"
+                    :getBlinkStyle="getBlinkStyle"
+                    @open-detail="openDetail"
+                    @change-month="handleMonthChange"
+                    @create-plan="(date) => router.get(route('planning.create'), { customer: selectedCustomer?.id, date })"
+                />
             </div>
         </div>
 

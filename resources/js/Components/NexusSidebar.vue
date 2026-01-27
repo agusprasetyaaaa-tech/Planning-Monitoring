@@ -18,8 +18,8 @@ const emit = defineEmits(['toggle', 'close-mobile']);
 // Get reactive page data
 const page = usePage();
 
-// Computed properties for active states - these will reactively update when URL changes
-const currentUrl = computed(() => page.url);
+// Computed properties for active states
+const currentUrl = computed(() => page.url || '');
 
 const isActive = computed(() => ({
     dashboard: currentUrl.value === '/dashboard',
@@ -32,9 +32,12 @@ const isActive = computed(() => ({
     planningReport: currentUrl.value.startsWith('/planning-report'),
     timeSettings: currentUrl.value.startsWith('/time-settings'),
     security: currentUrl.value.startsWith('/security'),
+    databaseBackup: currentUrl.value.startsWith('/settings/backup'),
 }));
 
-const openGroups = ref({
+// State Persistence for Groups
+const savedGroups = localStorage.getItem('nexus_sidebar_groups');
+const openGroups = ref(savedGroups ? JSON.parse(savedGroups) : {
     dashboard: true,
     database: true,
     settings: true,
@@ -43,15 +46,29 @@ const openGroups = ref({
 
 const toggleGroup = (group) => {
     openGroups.value[group] = !openGroups.value[group];
+    localStorage.setItem('nexus_sidebar_groups', JSON.stringify(openGroups.value));
 };
+
+// Transition Control
+const isMounted = ref(false);
+import { onMounted } from 'vue';
+onMounted(() => {
+    // Ensure group is open for active item if not already
+    if (isActive.value.products || isActive.value.customers || isActive.value.teams || isActive.value.users || isActive.value.roles) openGroups.value.database = true;
+    if (isActive.value.security || isActive.value.databaseBackup) openGroups.value.settings = true;
+    if (isActive.value.planning || isActive.value.planningReport || isActive.value.timeSettings) openGroups.value.workspace = true;
+    
+    setTimeout(() => { isMounted.value = true; }, 50);
+});
 </script>
 
 <template>
-    <aside class="bg-white border-r border-gray-100 flex flex-col fixed inset-y-0 left-0 z-50 transition-all duration-300 font-sans shadow-xl lg:shadow-none"
+    <aside class="bg-white border-r border-gray-100 flex flex-col fixed inset-y-0 left-0 z-50 font-sans shadow-xl lg:shadow-none"
         :class="[
             isCollapsed ? 'lg:w-20' : 'lg:w-72',
             mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
-            'w-72'
+            'w-72',
+            isMounted ? 'transition-all duration-300' : 'transition-none'
         ]">
         <!-- Brand -->
         <div class="h-16 flex items-center gap-3 bg-white" :class="isCollapsed ? 'justify-center px-4' : 'pl-7 pr-4'">
@@ -68,7 +85,7 @@ const toggleGroup = (group) => {
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
                  </svg>
             </button>
-
+            
             <!-- Mobile Close -->
             <button @click="$emit('close-mobile')" class="lg:hidden ml-auto text-gray-400 hover:text-gray-600">
                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -202,6 +219,19 @@ const toggleGroup = (group) => {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                             </svg>
                             <span v-show="!isCollapsed" class="font-medium whitespace-nowrap text-[15px] leading-[22px]">Security</span>
+                        </Link>
+                     </div>
+
+                     <!-- Database Backup -->
+                     <div class="relative">
+                        <div v-if="isActive.databaseBackup" class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-10 bg-emerald-500 rounded-r-full z-10"></div>
+                        <Link :href="route('settings.backup.index')" class="relative flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group ml-5"
+                            :class="[isActive.databaseBackup ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
+                            title="Database Backup">
+                            <svg class="w-6 h-6 shrink-0 transition-colors" :class="isActive.databaseBackup ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+                            </svg>
+                            <span v-show="!isCollapsed" class="font-medium whitespace-nowrap text-[15px] leading-[22px]">Database Backup</span>
                         </Link>
                      </div>
                 </div>

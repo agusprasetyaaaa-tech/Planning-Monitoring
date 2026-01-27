@@ -33,35 +33,29 @@ const widthClass = computed(() => {
         72: 'w-72',
         80: 'w-80',
         96: 'w-96',
-        'responsive': 'w-auto md:w-80', // Auto width for fixed inset
-    }[props.width.toString()];
+        'responsive': 'w-80 max-w-[calc(100vw-2rem)]', // Match debug page constraint
+    }[props.width.toString()] || 'w-48';
 });
 
 const alignmentClasses = computed(() => {
-    // If responsive, only apply alignment on desktop
-    const prefix = props.width === 'responsive' ? 'md:' : '';
-
     if (props.align === 'left') {
-        return prefix + 'ltr:origin-top-left ' + prefix + 'rtl:origin-top-right ' + prefix + 'start-0';
+        return 'origin-top-left left-0';
     } else if (props.align === 'right') {
-        return prefix + 'ltr:origin-top-right ' + prefix + 'rtl:origin-top-left ' + prefix + 'end-0';
+        return 'origin-top-right right-0';
+    } else if (props.align === 'center') {
+        return 'origin-top left-1/2 -translate-x-1/2';
+    } else if (props.align === 'center-mobile') {
+        return 'origin-top inset-x-0 mx-auto lg:left-auto lg:right-0 lg:origin-top-right';
     } else {
         return 'origin-top';
     }
-});
-
-const dropdownClasses = computed(() => {
-    if (props.width === 'responsive') {
-        return 'fixed inset-x-4 top-[68px] z-50 md:absolute md:z-50 md:inset-auto md:mt-2';
-    }
-    return 'absolute z-50 mt-2';
 });
 
 const open = ref(false);
 </script>
 
 <template>
-    <div class="relative">
+    <div :class="align === 'center-mobile' ? 'static lg:relative' : 'relative'">
         <div @click="open = !open">
             <slot name="trigger" />
         </div>
@@ -83,11 +77,9 @@ const open = ref(false);
         >
             <div
                 v-show="open"
-                class="rounded-md shadow-lg"
-                :class="[widthClass, alignmentClasses, dropdownClasses]"
-                style="display: none;" 
-                v-show:original="open" 
-                @click="open = false"
+                class="absolute z-50 mt-2 rounded-md shadow-lg"
+                :class="[widthClass, alignmentClasses]"
+                @click.stop
             >
                 <div
                     class="rounded-md ring-1 ring-black ring-opacity-5"

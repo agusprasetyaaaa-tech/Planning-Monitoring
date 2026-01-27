@@ -770,6 +770,9 @@ Route::middleware('auth')->group(function () {
         Route::patch('security', [App\Http\Controllers\SecurityController::class, 'update'])->name('security.update');
         Route::get('security/online', [App\Http\Controllers\OnlineUserController::class, 'index'])->name('security.online');
         Route::delete('security/online/clear', [App\Http\Controllers\OnlineUserController::class, 'clearHistory'])->name('security.online.clear');
+        // Database Backup
+        Route::get('settings/backup', [App\Http\Controllers\DatabaseBackupController::class, 'index'])->name('settings.backup.index');
+        Route::get('settings/backup/download', [App\Http\Controllers\DatabaseBackupController::class, 'download'])->name('settings.backup.download');
     });
 
     // Planning

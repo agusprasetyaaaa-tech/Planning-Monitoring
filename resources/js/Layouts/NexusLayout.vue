@@ -6,10 +6,23 @@ import Toast from '@/Components/Toast.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 
-const isSidebarCollapsed = ref(false);
+const isSidebarCollapsed = ref(localStorage.getItem('nexus_sidebar_collapsed') === 'true');
 const isMobileSidebarOpen = ref(false);
 
 const page = usePage();
+
+// Role Check - Stable Ref
+const isSuperAdmin = ref(page.props.auth?.user?.roles?.includes('Super Admin'));
+watch(() => page.props.auth?.user?.roles, (roles) => {
+    isSuperAdmin.value = roles?.includes('Super Admin');
+}, { immediate: true });
+
+// Transition Control
+const isMounted = ref(false);
+import { onMounted } from 'vue';
+onMounted(() => {
+    setTimeout(() => { isMounted.value = true; }, 50);
+});
 
 // Notification Logic
 const markRead = (notification) => {
@@ -33,15 +46,9 @@ const markAllRead = () => {
     router.post(route('notifications.read-all'), {}, { preserveScroll: true });
 };
 
-// Logic Check Role
-const isSuperAdmin = computed(() => {
-    // Check if roles exists and includes Super Admin
-    const roles = page.props.auth?.user?.roles || [];
-    return roles.includes('Super Admin');
-});
-
 const toggleSidebar = () => {
     isSidebarCollapsed.value = !isSidebarCollapsed.value;
+    localStorage.setItem('nexus_sidebar_collapsed', isSidebarCollapsed.value);
 };
 
 // Close mobile sidebar on route change
@@ -93,10 +100,14 @@ watch(() => page.props.flash, (flash) => {
             :mobile-open="isMobileSidebarOpen" 
             @toggle="toggleSidebar" 
             @close-mobile="isMobileSidebarOpen = false"
+            :class="{ 'transition-none': !isMounted }"
           />
           <!-- Main Content -->
-          <main class="min-h-screen flex flex-col transition-all duration-300" 
-                :class="isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-72'">
+          <main class="min-h-screen flex flex-col" 
+                :class="[
+                    isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-72',
+                    isMounted ? 'transition-[margin,width] duration-300' : ''
+                ]">
               <!-- Header -->
               <header class="h-16 bg-white border-b border-gray-200 sticky top-0 z-40 px-6 flex items-center justify-between">
                   <!-- Left: Breadcrumbs or Title -->
@@ -108,14 +119,18 @@ watch(() => page.props.flash, (flash) => {
                            </svg>
                       </button>
                       
+                      <!-- Header Slot for Title/Breadcrumbs -->
+                      <div class="flex-1">
+                          <slot name="header" />
+                      </div>
                   </div>
     
                   <!-- Right: Actions -->
                   <div class="flex items-center gap-3">
                        <!-- Notifications -->
                        <!-- Notifications -->
-                       <div class="relative">
-                           <Dropdown align="right" width="responsive" contentClasses="py-1 bg-white ring-1 ring-black ring-opacity-5">
+                       <div class="static lg:relative">
+                           <Dropdown align="center-mobile" width="responsive" contentClasses="py-1 bg-white ring-1 ring-black ring-opacity-5">
                                <template #trigger>
                                    <button class="p-2 text-gray-500 hover:bg-gray-50 rounded-lg hover:text-gray-900 relative">
                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>

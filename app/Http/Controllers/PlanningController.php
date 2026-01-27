@@ -177,10 +177,12 @@ class PlanningController extends Controller
                 'latestPlan.user',
                 'latestPlan.product',
                 'latestPlan.report',
-                'plans' => function ($q) {
-                    $q->with(['user', 'report', 'product', 'statusLogs.user'])
+                'plans' => function ($q) use ($month, $year) {
+                    $q->whereYear('planning_date', $year)
+                        ->whereMonth('planning_date', $month)
+                        ->with(['user', 'report', 'product', 'statusLogs.user'])
                         ->orderBy('planning_date', 'desc')
-                        ->orderBy('id', 'desc'); // Ensure newest plan by creation time is first
+                        ->orderBy('id', 'desc');
                 }
             ]);
         }

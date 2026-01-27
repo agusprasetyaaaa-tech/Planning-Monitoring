@@ -1132,8 +1132,8 @@ watch(() => props.customerHealthStats, () => {
                      <!-- Right Actions: Notification & Avatar -->
                      <div class="flex items-center gap-3 md:gap-5">
                          <!-- Notification Bell (Inside Banner) -->
-                         <div class="relative">
-                             <Dropdown align="right" width="responsive" contentClasses="py-1 bg-white ring-1 ring-black ring-opacity-5">
+                         <div class="static lg:relative">
+                             <Dropdown align="center-mobile" width="responsive" contentClasses="py-1 bg-white ring-1 ring-black ring-opacity-5">
                                  <template #trigger>
                                      <button class="p-2.5 text-white/90 hover:bg-white/20 hover:text-white rounded-full relative transition-all duration-200 group active:scale-95 shadow-sm border border-white/10 backdrop-blur-sm">
                                           <svg class="w-6 h-6 group-hover:animate-swing drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor">
