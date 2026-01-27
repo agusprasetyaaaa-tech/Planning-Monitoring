@@ -3,19 +3,26 @@ services:
         build:
             context: .
             dockerfile: Dockerfile
-        # Restart otomatis jika server reboot
         restart: always
         ports:
-            # Port 8081 container dibuka ke Port 80 VPS
             - '8081:80'
         environment:
-            # Nilai diambil dari Portainer Environment Variables
+            # Kita WAJIB mendaftarkan variabel ini agar masuk ke container
+            APP_NAME: ${APP_NAME}
+            APP_ENV: ${APP_ENV}
             APP_KEY: ${APP_KEY}
+            APP_DEBUG: ${APP_DEBUG}
             APP_URL: ${APP_URL}
-            DB_HOST: mysql
+            
+            # Bagian Database (KUNCI MASALAH ANDA DISINI)
+            DB_CONNECTION: ${DB_CONNECTION}
+            DB_HOST: ${DB_HOST}
+            DB_PORT: ${DB_PORT}
+            DB_DATABASE: ${DB_DATABASE}
+            DB_USERNAME: ${DB_USERNAME}
+            DB_PASSWORD: ${DB_PASSWORD}
+            
         volumes:
-            # HANYA folder storage yang disimpan permanen (untuk upload gambar/file user)
-            # Kita TIDAK LAGI me-mount code codingan (.:/app) agar tidak bentrok
             - 'app_storage:/app/storage'
         depends_on:
             - mysql
@@ -29,10 +36,9 @@ services:
             MYSQL_USER: '${DB_USERNAME}'
             MYSQL_PASSWORD: '${DB_PASSWORD}'
         volumes:
-            # Data database disimpan permanen
             - 'mysql_data:/var/lib/mysql'
         healthcheck:
-            test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+            test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
             retries: 3
             timeout: 5s
 
