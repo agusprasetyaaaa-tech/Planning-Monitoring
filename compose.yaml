@@ -1,49 +1,41 @@
 services:
-    laravel.test:
+    app:
         build:
             context: .
             dockerfile: Dockerfile
-        container_name: planning-monitoring-laravel.test-1
-        command: [ "frankenphp", "run", "--config", "/app/Caddyfile" ]
+        # Restart otomatis jika server reboot
+        restart: always
         ports:
-            - '${APP_PORT:-80}:80'
-            - '${VITE_PORT:-5175}:5175'
+            # Port 80 container dibuka ke Port 80 VPS
+            - '80:80'
         environment:
-            SERVER_NAME: "localhost"
-            FRANKENPHP_CONFIG: "root public/"
-            APP_URL: "http://localhost"
-            LARAVEL_SAIL: 1
+            # Nilai diambil dari Portainer Environment Variables
+            APP_KEY: ${APP_KEY}
+            APP_URL: ${APP_URL}
+            DB_HOST: mysql
         volumes:
-            - '.:/app'
-            - './Caddyfile:/app/Caddyfile:ro'
-        networks:
-            - sail
+            # HANYA folder storage yang disimpan permanen (untuk upload gambar/file user)
+            # Kita TIDAK LAGI me-mount code codingan (.:/app) agar tidak bentrok
+            - 'app_storage:/app/storage'
         depends_on:
             - mysql
 
     mysql:
-        image: 'mysql:8.4'
-        container_name: planning-monitoring-mysql-1
-        ports:
-            - '3309:3306'
+        image: 'mysql:8.0'
+        restart: always
         environment:
-            MYSQL_ROOT_PASSWORD: 'password'
-            MYSQL_DATABASE: 'laravel'
-            MYSQL_USER: 'sail'
-            MYSQL_PASSWORD: 'password'
+            MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
+            MYSQL_DATABASE: '${DB_DATABASE}'
+            MYSQL_USER: '${DB_USERNAME}'
+            MYSQL_PASSWORD: '${DB_PASSWORD}'
         volumes:
-            - 'sail-mysql:/var/lib/mysql'
-        networks:
-            - sail
+            # Data database disimpan permanen
+            - 'mysql_data:/var/lib/mysql'
         healthcheck:
-            test: [ "CMD", "mysqladmin", "ping", "-ppassword" ]
+            test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
             retries: 3
             timeout: 5s
 
-networks:
-    sail:
-        driver: bridge
-
 volumes:
-    sail-mysql:
-        driver: local
+    app_storage:
+    mysql_data:
