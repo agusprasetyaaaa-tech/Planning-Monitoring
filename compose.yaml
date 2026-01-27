@@ -13,7 +13,7 @@ services:
             APP_KEY: ${APP_KEY}
             APP_DEBUG: ${APP_DEBUG}
             APP_URL: ${APP_URL}
-            
+
             # Bagian Database (KUNCI MASALAH ANDA DISINI)
             DB_CONNECTION: ${DB_CONNECTION}
             DB_HOST: ${DB_HOST}
@@ -21,7 +21,7 @@ services:
             DB_DATABASE: ${DB_DATABASE}
             DB_USERNAME: ${DB_USERNAME}
             DB_PASSWORD: ${DB_PASSWORD}
-            
+
         volumes:
             - 'app_storage:/app/storage'
         depends_on:
@@ -38,7 +38,7 @@ services:
         volumes:
             - 'mysql_data:/var/lib/mysql'
         healthcheck:
-            test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+            test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
             retries: 3
             timeout: 5s
 
