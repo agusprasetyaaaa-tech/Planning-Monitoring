@@ -1,15 +1,14 @@
 {
-    frankenphp
+	frankenphp
 }
 
-# GANTI :80 MENJADI NAMA DOMAIN ANDA
-marketing.interprima.co.id {
-    # Set the root to the public directory
-    root * public/
+:80 {
+	# Set the root to the public directory
+	root * public/
+	
+	# Enable compression
+	encode zstd br
 
-    # Enable compression
-    encode zstd br
-
-    # Enable PHP Server (FrankenPHP)
-    php_server
+	# Enable PHP Server (FrankenPHP)
+	php_server
 }
