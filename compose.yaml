@@ -5,28 +5,33 @@ services:
             dockerfile: Dockerfile
         restart: always
         ports:
-            - '8081:80'
+            # GANTI MAPPING PORT DISINI
+            - '80:80'    # HTTP Standard
+            - '443:443'  # HTTPS Standard (SSL)
+            - '443:443/udp' # Enable HTTP/3 (Optional tapi bagus untuk performa)
         environment:
-            # Kita WAJIB mendaftarkan variabel ini agar masuk ke container
             APP_NAME: ${APP_NAME}
             APP_ENV: ${APP_ENV}
             APP_KEY: ${APP_KEY}
             APP_DEBUG: ${APP_DEBUG}
             APP_URL: ${APP_URL}
-
-            # Bagian Database (KUNCI MASALAH ANDA DISINI)
+            
+            # Database
             DB_CONNECTION: ${DB_CONNECTION}
             DB_HOST: ${DB_HOST}
             DB_PORT: ${DB_PORT}
             DB_DATABASE: ${DB_DATABASE}
             DB_USERNAME: ${DB_USERNAME}
             DB_PASSWORD: ${DB_PASSWORD}
-
+            
         volumes:
             - 'app_storage:/app/storage'
+            # Caddy Data Volume (PENTING: Agar sertifikat SSL tersimpan dan tidak request ulang tiap restart)
+            - 'caddy_data:/data'
+            - 'caddy_config:/config'
         depends_on:
             - mysql
-
+ 
     mysql:
         image: 'mysql:8.0'
         restart: always
@@ -38,10 +43,13 @@ services:
         volumes:
             - 'mysql_data:/var/lib/mysql'
         healthcheck:
-            test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+            test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
             retries: 3
             timeout: 5s
-
+ 
 volumes:
     app_storage:
     mysql_data:
+    # Tambahkan volume baru untuk Caddy
+    caddy_data:
+    caddy_config:
