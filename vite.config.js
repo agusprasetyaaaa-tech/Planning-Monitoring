@@ -4,17 +4,20 @@ import vue from '@vitejs/plugin-vue';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ mode }) => {
-    // Load env file based on `mode` in the current working directory.
     const env = loadEnv(mode, process.cwd(), '');
-
     const isProduction = mode === 'production';
+    
+    // Pastikan ini menggunakan HTTPS untuk production
     const appUrl = isProduction ? 'https://marketing.interprima.co.id' : 'http://localhost';
 
     return {
+        // PENTING: Memastikan base path aset selalu relatif atau benar
+        base: isProduction ? '/build/' : '/',
+
         plugins: [
             laravel({
                 input: 'resources/js/app.js',
-                refresh: !isProduction, // Disable refresh in production
+                refresh: !isProduction,
             }),
             vue({
                 template: {
@@ -27,13 +30,15 @@ export default defineConfig(({ mode }) => {
             VitePWA({
                 registerType: 'autoUpdate',
                 injectRegister: 'auto',
+                // PENTING: Gunakan 'build' sebagai base untuk service worker di production
+                base: '/', 
                 devOptions: {
-                    enabled: !isProduction // Only enable in development
+                    enabled: !isProduction
                 },
                 workbox: {
                     cleanupOutdatedCaches: true,
-                    globPatterns: ['**/*.{js,css,html,ico,png,svg,json,vue,txt,woff2}'],
-                    // Skip waiting in production for immediate updates
+                    // Pastikan service worker meng-cache aset di folder build
+                    globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff2}'],
                     skipWaiting: isProduction,
                     clientsClaim: isProduction,
                 },
@@ -41,7 +46,7 @@ export default defineConfig(({ mode }) => {
                     name: 'Planning Monitoring System',
                     short_name: 'PlanlyApp',
                     description: 'Planning and Monitoring Application',
-                    theme_color: '#009688',
+                    theme_color: '#2563eb', // Disamakan dengan app.blade.php
                     background_color: '#ffffff',
                     display: 'standalone',
                     orientation: 'portrait',
@@ -51,24 +56,22 @@ export default defineConfig(({ mode }) => {
                         {
                             src: '/logo/logo.png',
                             sizes: '192x192',
-                            type: 'image/png'
+                            type: 'image/png',
+                            purpose: 'any maskable' // Tambahkan ini agar PWA lebih kompatibel
                         },
                         {
                             src: '/logo/logo.png',
                             sizes: '512x512',
-                            type: 'image/png'
+                            type: 'image/png',
+                            purpose: 'any maskable'
                         }
                     ]
                 }
             })
         ],
 
-        // Build configuration
         build: {
-            // Output directory
             outDir: 'public/build',
-
-            // Production optimizations
             minify: isProduction ? 'terser' : false,
             terserOptions: isProduction ? {
                 compress: {
@@ -76,8 +79,6 @@ export default defineConfig(({ mode }) => {
                     drop_debugger: true,
                 },
             } : {},
-
-            // Chunk splitting for better caching
             rollupOptions: {
                 output: {
                     manualChunks: {
@@ -86,39 +87,28 @@ export default defineConfig(({ mode }) => {
                     },
                 },
             },
-
-            // Source maps only in development
             sourcemap: !isProduction,
-
-            // Asset size warnings
             chunkSizeWarningLimit: 1000,
         },
 
-        // Server configuration (Development only - not used in production build)
-        // In production, 'npm run build' creates static assets, no dev server needed
         server: {
             host: '0.0.0.0',
             port: 5174,
             hmr: {
-                host: 'localhost',
+                // PENTING: Agar Hot Module Replacement jalan via HTTPS
+                host: isProduction ? 'marketing.interprima.co.id' : 'localhost',
+                protocol: isProduction ? 'wss' : 'ws', 
             },
         },
 
-        // Define environment variables for client
         define: {
             'process.env.VITE_APP_URL': JSON.stringify(appUrl),
         },
 
-        // Resolve configuration
         resolve: {
             alias: {
                 '@': '/resources/js',
             },
-        },
-
-        // Enable esbuild optimizations
-        esbuild: {
-            drop: isProduction ? ['console', 'debugger'] : [],
         },
     };
 });
