@@ -6,13 +6,10 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '');
     const isProduction = mode === 'production';
-    
-    // Pastikan ini menggunakan HTTPS untuk production
     const appUrl = isProduction ? 'https://marketing.interprima.co.id' : 'http://localhost';
 
     return {
-        // PENTING: Memastikan base path aset selalu relatif atau benar
-        base: isProduction ? '/build/' : '/',
+        // base: isProduction ? '/build/' : '/', // Tetap pertahankan ini
 
         plugins: [
             laravel({
@@ -30,14 +27,16 @@ export default defineConfig(({ mode }) => {
             VitePWA({
                 registerType: 'autoUpdate',
                 injectRegister: 'auto',
-                // PENTING: Gunakan 'build' sebagai base untuk service worker di production
                 base: '/', 
                 devOptions: {
                     enabled: !isProduction
                 },
                 workbox: {
+                    // TAMBAHKAN INI: Mengatasi error "non-precached-url"
+                    navigateFallback: '/',
+                    navigateFallbackAllowlist: [/^(?!\/__).*/],
+                    
                     cleanupOutdatedCaches: true,
-                    // Pastikan service worker meng-cache aset di folder build
                     globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff2}'],
                     skipWaiting: isProduction,
                     clientsClaim: isProduction,
@@ -46,7 +45,7 @@ export default defineConfig(({ mode }) => {
                     name: 'Planning Monitoring System',
                     short_name: 'PlanlyApp',
                     description: 'Planning and Monitoring Application',
-                    theme_color: '#2563eb', // Disamakan dengan app.blade.php
+                    theme_color: '#2563eb',
                     background_color: '#ffffff',
                     display: 'standalone',
                     orientation: 'portrait',
@@ -57,7 +56,7 @@ export default defineConfig(({ mode }) => {
                             src: '/logo/logo.png',
                             sizes: '192x192',
                             type: 'image/png',
-                            purpose: 'any maskable' // Tambahkan ini agar PWA lebih kompatibel
+                            purpose: 'any maskable'
                         },
                         {
                             src: '/logo/logo.png',
@@ -73,12 +72,7 @@ export default defineConfig(({ mode }) => {
         build: {
             outDir: 'public/build',
             minify: isProduction ? 'terser' : false,
-            terserOptions: isProduction ? {
-                compress: {
-                    drop_console: true,
-                    drop_debugger: true,
-                },
-            } : {},
+            // ... (terserOptions tetap sama)
             rollupOptions: {
                 output: {
                     manualChunks: {
@@ -95,7 +89,6 @@ export default defineConfig(({ mode }) => {
             host: '0.0.0.0',
             port: 5174,
             hmr: {
-                // PENTING: Agar Hot Module Replacement jalan via HTTPS
                 host: isProduction ? 'marketing.interprima.co.id' : 'localhost',
                 protocol: isProduction ? 'wss' : 'ws', 
             },
