@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use App\Models\Plan;
 use App\Observers\PlanObserver;
-
+use Illuminate\Support\Facades\URL; // 1. Tambahkan ini
 use Illuminate\Support\Facades\Event;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -28,10 +28,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // 2. Tambahkan kondisi ini untuk memaksa HTTPS di produksi
+        if (config('app.env') === 'production') {
+            URL::forceScheme('https');
+        }
+
         Vite::prefetch(concurrency: 3);
-
         Plan::observe(PlanObserver::class);
-
         Event::listen(Login::class, LogSuccessfulLogin::class);
         Event::listen(Logout::class, LogSuccessfulLogout::class);
     }
