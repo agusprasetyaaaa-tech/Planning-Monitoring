@@ -1,14 +1,15 @@
 {
-	frankenphp
+    frankenphp
+    # Tambahkan ini agar FrankenPHP tahu dia berada di belakang proxy
+    trusted_proxies static private_ranges
 }
 
 :80 {
-	# Set the root to the public directory
-	root * public/
-	
-	# Enable compression
-	encode zstd br
-
-	# Enable PHP Server (FrankenPHP)
-	php_server
+    root * public/
+    encode zstd br
+    
+    # Tambahkan header ini agar Laravel tahu request aslinya adalah HTTPS
+    header_up X-Forwarded-Proto {scheme}
+    
+    php_server
 }
