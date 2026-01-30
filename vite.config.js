@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), '');
 
     const isProduction = mode === 'production';
-    const appUrl = isProduction ? 'http://103.56.148.34:8082' : 'http://localhost';
+    const appUrl = isProduction ? 'https://marketing.interprima.co.id' : 'http://localhost';
 
     return {
         plugins: [
