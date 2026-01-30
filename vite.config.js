@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
             VitePWA({
                 registerType: 'autoUpdate',
                 injectRegister: 'auto',
-                base: '/', 
+                base: '/',
                 devOptions: {
                     enabled: !isProduction
                 },
@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
                     // TAMBAHKAN INI: Mengatasi error "non-precached-url"
                     navigateFallback: '/',
                     navigateFallbackAllowlist: [/^(?!\/__).*/],
-                    
+
                     cleanupOutdatedCaches: true,
                     globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff2}'],
                     skipWaiting: isProduction,
@@ -90,7 +90,7 @@ export default defineConfig(({ mode }) => {
             port: 5174,
             hmr: {
                 host: isProduction ? 'marketing.interprima.co.id' : 'localhost',
-                protocol: isProduction ? 'wss' : 'ws', 
+                protocol: isProduction ? 'wss' : 'ws',
             },
         },
 

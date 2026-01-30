@@ -72,10 +72,10 @@ onMounted(() => {
         ]">
         <!-- Brand -->
         <div class="h-16 flex items-center gap-3 bg-white" :class="isCollapsed ? 'justify-center px-4' : 'pl-7 pr-4'">
-            <img src="/logo/logo.png" alt="Planly App" class="w-12 h-12 object-contain" />
+            <img src="/logo/logo.png" alt="Planning Monitoring System" class="w-12 h-12 object-contain" />
             
             <div v-show="!isCollapsed" class="flex flex-col justify-center">
-                <span class="text-xl font-bold text-slate-900 leading-tight whitespace-nowrap">Planly App</span>
+                <span class="text-xl font-bold text-slate-900 leading-tight whitespace-nowrap">Planning Monitoring System</span>
                 <span class="text-[10px] text-gray-500 font-normal whitespace-nowrap">Planning Monitoring System</span>
             </div>
             

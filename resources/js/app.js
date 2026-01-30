@@ -8,10 +8,13 @@ import { createApp, h, ref, onMounted } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import SplashScreen from './Components/SplashScreen.vue';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+// UPDATE: Ganti 'Laravel' menjadi 'Planly App' sebagai default
+const appName = import.meta.env.VITE_APP_NAME || 'Planning Monitoring System';
 
 createInertiaApp({
-    title: (title) => `${title} - ${appName}`,
+    // Jika title halaman kosong, maka tampilkan hanya 'Planly App'
+    title: (title) => title ? `${title} - Planning Monitoring System` : 'Planning Monitoring System',
+
     resolve: (name) =>
         resolvePageComponent(
             `./Pages/${name}.vue`,
@@ -43,7 +46,7 @@ createInertiaApp({
             .mount(el);
     },
     progress: {
-        color: '#4B5563',
+        color: '#2563eb', // Disamakan dengan theme color Anda
     },
 });
 
