@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use App\Models\Plan;
 use App\Observers\PlanObserver;
-use Illuminate\Support\Facades\URL; // 1. Tambahkan ini
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
@@ -20,7 +20,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Tambahkan ini untuk memastikan request selalu dianggap aman
+        // Paksa server membaca protokol HTTPS di level request
         if (config('app.env') === 'production') {
             $this->app['request']->server->set('HTTPS', true);
         }
@@ -31,12 +31,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Paksa semua URL (asset, route) menggunakan https://
         if (config('app.env') === 'production') {
-            \Illuminate\Support\Facades\URL::forceScheme('https');
+            URL::forceScheme('https');
         }
 
         Vite::prefetch(concurrency: 3);
+
         Plan::observe(PlanObserver::class);
+
         Event::listen(Login::class, LogSuccessfulLogin::class);
         Event::listen(Logout::class, LogSuccessfulLogout::class);
     }
