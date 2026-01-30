@@ -5,7 +5,7 @@ services:
             dockerfile: Dockerfile
         restart: always
         ports:
-            - '8081:80'
+            - '127.0.0.1:8081:80'
         environment:
             # Kita WAJIB mendaftarkan variabel ini agar masuk ke container
             APP_NAME: ${APP_NAME}
