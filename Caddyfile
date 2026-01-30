@@ -1,15 +1,18 @@
 {
     frankenphp
-    # Tambahkan ini agar FrankenPHP tahu dia berada di belakang proxy
+    # Izinkan traffic dari proxy lokal (Nginx)
     trusted_proxies static private_ranges
 }
 
 :80 {
     root * public/
-    encode zstd br
+    encode zstd gzip
     
-    # Tambahkan header ini agar Laravel tahu request aslinya adalah HTTPS
-    header_up X-Forwarded-Proto {scheme}
-    
+    # Memberitahu Laravel bahwa request aslinya adalah HTTPS
+    header {
+        X-Forwarded-Proto https
+        X-Forwarded-Host {host}
+    }
+
     php_server
 }
