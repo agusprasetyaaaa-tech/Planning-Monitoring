@@ -5,16 +5,24 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">
     
+    {{-- Memastikan semua request menggunakan HTTPS --}}
     <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
 
-    <title inertia>{{ config('app.name', 'Laravel') }}</title>
+    <title inertia>{{ config('app.name', 'Planly App') }}</title>
+
+    {{-- --- UPDATE FAVICON MENGGUNAKAN LOGO.PNG --- --}}
+    <link rel="icon" type="image/png" href="{{ asset('logo/logo.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('logo/logo.png') }}">
 
     <meta name="theme-color" content="#2563eb">
+    
     {{-- Perbaikan peringatan deprecated --}}
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="{{ config('app.name', 'Laravel') }}">
     
+    {{-- Manifest PWA --}}
     <link rel="manifest" href="{{ asset('build/manifest.webmanifest') }}">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
