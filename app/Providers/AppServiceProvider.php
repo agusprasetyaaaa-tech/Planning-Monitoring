@@ -20,7 +20,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Tambahkan ini untuk memastikan request selalu dianggap aman
+        if (config('app.env') === 'production') {
+            $this->app['request']->server->set('HTTPS', true);
+        }
     }
 
     /**
@@ -28,9 +31,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // 2. Tambahkan kondisi ini untuk memaksa HTTPS di produksi
         if (config('app.env') === 'production') {
-            URL::forceScheme('https');
+            \Illuminate\Support\Facades\URL::forceScheme('https');
         }
 
         Vite::prefetch(concurrency: 3);
