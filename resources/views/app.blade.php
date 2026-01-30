@@ -21,6 +21,7 @@
         rel="stylesheet">
 
     @routes
+    {{-- Menambahkan konfigurasi Vite agar sadar HTTPS --}}
     @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
     @inertiaHead
 </head>
