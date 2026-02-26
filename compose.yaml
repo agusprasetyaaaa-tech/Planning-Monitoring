@@ -1,97 +1,46 @@
 services:
-    # ============================================================
-    # SERVICE PRODUCTION: FrankenPHP
-    # Digunakan untuk deploy ke VPS/production
-    # ============================================================
     app:
         build:
             context: .
             dockerfile: Dockerfile
+        restart: always
         ports:
-            - "${APP_PORT_PROD:-8081}:80"
+            - '8081:80'
         environment:
-            - APP_NAME=${APP_NAME:-Planly App}
-            - APP_ENV=${APP_ENV:-production}
-            - APP_DEBUG=${APP_DEBUG:-false}
-            - APP_KEY=${APP_KEY}
-            - APP_URL=${APP_URL:-https://marketing.interprima.co.id}
-            - DB_CONNECTION=mysql
-            - DB_HOST=mysql
-            - DB_PORT=3306
-            - DB_DATABASE=${DB_DATABASE}
-            - DB_USERNAME=${DB_USERNAME}
-            - DB_PASSWORD=${DB_PASSWORD}
-            - SESSION_SECURE_COOKIE=${SESSION_SECURE_COOKIE:-true}
-        networks:
-            - sail
-        depends_on:
-            mysql:
-                condition: service_healthy
-
-    # ============================================================
-    # SERVICE DEVELOPMENT: Laravel Sail
-    # ============================================================
-    laravel.test:
-        build:
-            context: './vendor/laravel/sail/runtimes/8.5'
-            dockerfile: Dockerfile
-            args:
-                WWWGROUP: '${WWWGROUP}'
-        image: 'sail-8.5/app'
-        extra_hosts:
-            - 'host.docker.internal:host-gateway'
-        ports:
-            - '${APP_PORT:-8082}:80'
-            - '${VITE_PORT:-5174}:${VITE_PORT:-5174}'
-        environment:
-            WWWUSER: '${WWWUSER}'
-            LARAVEL_SAIL: 1
-            XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
-            XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
-            IGNITION_LOCAL_SITES_PATH: '${PWD}'
+            APP_NAME: ${APP_NAME}
+            APP_ENV: ${APP_ENV}
+            APP_KEY: ${APP_KEY}
+            APP_DEBUG: ${APP_DEBUG}
+            APP_URL: ${APP_URL}
+            DB_CONNECTION: mysql
+            DB_HOST: mysql
+            DB_PORT: 3306
+            DB_DATABASE: ${DB_DATABASE}
+            DB_USERNAME: ${DB_USERNAME}
+            DB_PASSWORD: ${DB_PASSWORD}
         volumes:
-            - '.:/var/www/html'
-        networks:
-            - sail
+            - planning-monitoring_app_storage:/app/storage
         depends_on:
-            mysql:
-                condition: service_healthy
+            - mysql
 
-    # ============================================================
-    # SERVICE DATABASE: MySQL
-    # Menggunakan Volume dari Stack Lama (planning-monitoring)
-    # ============================================================
     mysql:
         image: 'mysql:8.4'
-        ports:
-            - '${FORWARD_DB_PORT:-3306}:3306'
+        restart: always
         environment:
             MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'
-            MYSQL_ROOT_HOST: '%'
             MYSQL_DATABASE: '${DB_DATABASE}'
             MYSQL_USER: '${DB_USERNAME}'
             MYSQL_PASSWORD: '${DB_PASSWORD}'
-            MYSQL_ALLOW_EMPTY_PASSWORD: 1
         volumes:
-            # Mengarahkan ke volume lama agar data tidak hilang
-            - planning-monitoring_sail-mysql:/var/lib/mysql
-            - './vendor/laravel/sail/database/mysql/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh'
-        networks:
-            - sail
+            # PENTING: Arahkan ke nama volume lama Anda
+            - planning-monitoring_mysql_data:/var/lib/mysql
         healthcheck:
-            test:
-                - CMD
-                - mysqladmin
-                - ping
-                - '-p${DB_PASSWORD}'
+            test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
             retries: 3
             timeout: 5s
 
-networks:
-    sail:
-        driver: bridge
-
 volumes:
-    # Mendeklarasikan volume lama sebagai resource eksternal
-    planning-monitoring_sail-mysql:
+    planning-monitoring_app_storage:
+        external: true
+    planning-monitoring_mysql_data:
         external: true
