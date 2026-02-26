@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
+use App\Notifications\CustomResetPasswordNotification;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -80,5 +81,16 @@ class User extends Authenticatable implements MustVerifyEmail
     public function customers()
     {
         return $this->hasMany(Customer::class, 'marketing_sales_id');
+    }
+
+    /**
+     * Send the password reset notification.
+     *
+     * @param  string  $token
+     * @return void
+     */
+    public function sendPasswordResetNotification($token)
+    {
+        $this->notify(new CustomResetPasswordNotification($token));
     }
 }

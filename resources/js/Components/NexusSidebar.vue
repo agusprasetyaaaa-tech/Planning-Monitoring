@@ -30,9 +30,11 @@ const isActive = computed(() => ({
     roles: currentUrl.value.startsWith('/roles'),
     planning: currentUrl.value.startsWith('/planning') && !currentUrl.value.startsWith('/planning-report'),
     planningReport: currentUrl.value.startsWith('/planning-report'),
+    dailyReport: currentUrl.value.startsWith('/daily-report'),
     timeSettings: currentUrl.value.startsWith('/time-settings'),
     security: currentUrl.value.startsWith('/security'),
     databaseBackup: currentUrl.value.startsWith('/settings/backup'),
+    emailSettings: currentUrl.value.startsWith('/settings/email'),
 }));
 
 // State Persistence for Groups
@@ -55,7 +57,7 @@ import { onMounted } from 'vue';
 onMounted(() => {
     // Ensure group is open for active item if not already
     if (isActive.value.products || isActive.value.customers || isActive.value.teams || isActive.value.users || isActive.value.roles) openGroups.value.database = true;
-    if (isActive.value.security || isActive.value.databaseBackup) openGroups.value.settings = true;
+    if (isActive.value.security || isActive.value.databaseBackup || isActive.value.emailSettings) openGroups.value.settings = true;
     if (isActive.value.planning || isActive.value.planningReport || isActive.value.timeSettings) openGroups.value.workspace = true;
     
     setTimeout(() => { isMounted.value = true; }, 50);
@@ -72,10 +74,10 @@ onMounted(() => {
         ]">
         <!-- Brand -->
         <div class="h-16 flex items-center gap-3 bg-white" :class="isCollapsed ? 'justify-center px-4' : 'pl-7 pr-4'">
-            <img src="/logo/logo.png" alt="Planning Monitoring System" class="w-12 h-12 object-contain" />
+            <img src="/logo/logo.png" alt="Planly App" class="w-12 h-12 object-contain" />
             
             <div v-show="!isCollapsed" class="flex flex-col justify-center">
-                <span class="text-xl font-bold text-slate-900 leading-tight whitespace-nowrap">Planning Monitoring System</span>
+                <span class="text-xl font-bold text-slate-900 leading-tight whitespace-nowrap">Planly App</span>
                 <span class="text-[10px] text-gray-500 font-normal whitespace-nowrap">Planning Monitoring System</span>
             </div>
             
@@ -234,6 +236,19 @@ onMounted(() => {
                             <span v-show="!isCollapsed" class="font-medium whitespace-nowrap text-[15px] leading-[22px]">Database Backup</span>
                         </Link>
                      </div>
+
+                     <!-- Email Settings -->
+                     <div class="relative">
+                        <div v-if="isActive.emailSettings" class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-10 bg-emerald-500 rounded-r-full z-10"></div>
+                        <Link :href="route('settings.email.index')" class="relative flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group ml-5"
+                            :class="[isActive.emailSettings ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
+                            title="Email Settings">
+                            <svg class="w-6 h-6 shrink-0 transition-colors" :class="isActive.emailSettings ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            <span v-show="!isCollapsed" class="font-medium whitespace-nowrap text-[15px] leading-[22px]">Email Settings</span>
+                        </Link>
+                     </div>
                 </div>
             </div>
 
@@ -248,6 +263,19 @@ onMounted(() => {
                 <div v-show="isCollapsed" class="mb-2 h-px bg-gray-100 mx-2"></div>
                 
                 <div v-show="openGroups.workspace || isCollapsed" class="space-y-1">
+                     <!-- Daily Report -->
+                     <div class="relative">
+                        <div v-if="isActive.dailyReport" class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-10 bg-emerald-500 rounded-r-full z-10"></div>
+                        <Link :href="route('daily-report.index')" class="relative flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group ml-5"
+                            :class="[isActive.dailyReport ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
+                            title="Daily Report">
+                            <svg class="w-6 h-6 shrink-0 transition-colors" :class="isActive.dailyReport ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                            </svg>
+                            <span v-show="!isCollapsed" class="font-medium whitespace-nowrap text-[15px] leading-[22px]">Daily</span>
+                        </Link>
+                     </div>
+
                      <!-- Planning -->
                      <div class="relative">
                         <div v-if="isActive.planning" class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-10 bg-emerald-500 rounded-r-full z-10"></div>
@@ -270,10 +298,10 @@ onMounted(() => {
                             <svg class="w-6 h-6 shrink-0 transition-colors" :class="isActive.planningReport ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            <span v-show="!isCollapsed" class="font-medium whitespace-nowrap text-[15px] leading-[22px]">Planning Report</span>
+                            <span v-show="!isCollapsed" class="font-medium whitespace-nowrap text-[15px] leading-[22px]">Planning Reports</span>
                         </Link>
                      </div>
-
+                     
                      <!-- Time Management -->
                      <div class="relative">
                         <div v-if="isActive.timeSettings" class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-10 bg-emerald-500 rounded-r-full z-10"></div>

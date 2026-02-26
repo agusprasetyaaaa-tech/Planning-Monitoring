@@ -1,7 +1,7 @@
 <script setup>
 import NexusSidebar from '@/Components/NexusSidebar.vue';
 import { Head, Link, usePage, router } from '@inertiajs/vue3';
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, onMounted } from 'vue';
 import Toast from '@/Components/Toast.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
@@ -11,15 +11,16 @@ const isMobileSidebarOpen = ref(false);
 
 const page = usePage();
 
-// Role Check - Stable Ref
-const isSuperAdmin = ref(page.props.auth?.user?.roles?.includes('Super Admin'));
-watch(() => page.props.auth?.user?.roles, (roles) => {
-    isSuperAdmin.value = roles?.includes('Super Admin');
-}, { immediate: true });
+// Role Check
+const hasElevatedRole = computed(() => {
+    const roles = page.props.auth?.user?.roles || [];
+    // Only Super Admin sees the full layout (Sidebar/Navbar)
+    // Managers, BOD, Supervisors, and Users use the mobile-optimized layout
+    return roles.includes('Super Admin');
+});
 
 // Transition Control
 const isMounted = ref(false);
-import { onMounted } from 'vue';
 onMounted(() => {
     setTimeout(() => { isMounted.value = true; }, 50);
 });
@@ -91,7 +92,7 @@ watch(() => page.props.flash, (flash) => {
   <div class="bg-gray-50 min-h-screen font-sans">
       
       <!-- Layout for Super Admin -->
-      <template v-if="isSuperAdmin">
+      <template v-if="hasElevatedRole">
           <!-- Mobile Backdrop -->
           <div v-show="isMobileSidebarOpen" class="fixed inset-0 bg-gray-900/50 z-40 lg:hidden backdrop-blur-sm transition-opacity" @click="isMobileSidebarOpen = false"></div>
     
@@ -258,22 +259,7 @@ watch(() => page.props.flash, (flash) => {
               <!-- Mobile Bottom Navigation (Curved/Pop-up Style) -->
               <!-- Mobile Bottom Navigation (Flat, Simple, No Animation) -->
               <nav class="lg:hidden fixed bottom-0 left-0 z-50 w-full bg-white border-t border-gray-200 pb-6">
-                <div class="grid h-16 w-full grid-cols-3 mx-auto">
-                    
-                    <!-- Planning -->
-                    <Link :href="route('planning.index')" 
-                          class="flex flex-col items-center justify-center w-full h-full gap-0.5 active:bg-gray-50">
-                        <svg class="w-6 h-6" 
-                             :class="$page.url.startsWith('/planning') && !$page.url.startsWith('/planning-report') ? 'text-[#0aa573]' : 'text-gray-400'"
-                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span class="text-[10px] font-medium"
-                              :class="$page.url.startsWith('/planning') && !$page.url.startsWith('/planning-report') ? 'text-[#0aa573]' : 'text-gray-500'">
-                            Planning
-                        </span>
-                    </Link>
-
+                <div class="grid h-16 w-full grid-cols-4 mx-auto">
                     <!-- Home -->
                     <Link :href="route('dashboard')" 
                           class="flex flex-col items-center justify-center w-full h-full gap-0.5 active:bg-gray-50">
@@ -287,8 +273,36 @@ watch(() => page.props.flash, (flash) => {
                             Home
                         </span>
                     </Link>
+
+                    <!-- Daily Reports -->
+                    <Link :href="route('daily-report.index')" 
+                          class="flex flex-col items-center justify-center w-full h-full gap-0.5 active:bg-gray-50">
+                        <svg class="w-6 h-6" 
+                             :class="$page.url.startsWith('/daily-report') ? 'text-[#0aa573]' : 'text-gray-400'"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span class="text-[10px] font-medium"
+                              :class="$page.url.startsWith('/daily-report') ? 'text-[#0aa573]' : 'text-gray-500'">
+                            Daily
+                        </span>
+                    </Link>
+
+                    <!-- Planning -->
+                    <Link :href="route('planning.index')" 
+                          class="flex flex-col items-center justify-center w-full h-full gap-0.5 active:bg-gray-50">
+                        <svg class="w-6 h-6" 
+                             :class="$page.url.startsWith('/planning') && !$page.url.startsWith('/planning-report') ? 'text-[#0aa573]' : 'text-gray-400'"
+                             fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span class="text-[10px] font-medium"
+                              :class="$page.url.startsWith('/planning') && !$page.url.startsWith('/planning-report') ? 'text-[#0aa573]' : 'text-gray-500'">
+                            Planning
+                        </span>
+                    </Link>
                     
-                    <!-- Report -->
+                    <!-- Report Planning -->
                     <Link :href="route('planning-report.index')" 
                           class="flex flex-col items-center justify-center w-full h-full gap-0.5 active:bg-gray-50">
                         <svg class="w-6 h-6" 
@@ -298,7 +312,7 @@ watch(() => page.props.flash, (flash) => {
                         </svg>
                         <span class="text-[10px] font-medium"
                               :class="$page.url.startsWith('/planning-report') ? 'text-[#0aa573]' : 'text-gray-500'">
-                            Report
+                            Reports
                         </span>
                     </Link>
 

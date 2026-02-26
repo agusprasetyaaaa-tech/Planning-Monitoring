@@ -8,12 +8,12 @@ import { createApp, h, ref, onMounted } from 'vue';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import SplashScreen from './Components/SplashScreen.vue';
 
-// UPDATE: Ganti 'Laravel' menjadi 'Planly App' sebagai default
-const appName = import.meta.env.VITE_APP_NAME || 'Planning Monitoring System';
+// UPDATE: Ganti ke 'Planly App' sebagai default
+const appName = import.meta.env.VITE_APP_NAME || 'Planly App';
 
 createInertiaApp({
     // Jika title halaman kosong, maka tampilkan hanya 'Planly App'
-    title: (title) => title ? `${title} - Planning Monitoring System` : 'Planning Monitoring System',
+    title: (title) => title ? `${title} - Planly App` : 'Planly App',
 
     resolve: (name) =>
         resolvePageComponent(

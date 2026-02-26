@@ -2,16 +2,22 @@
     root * public/
     encode zstd gzip
 
-    # Paksa semua variabel PHP menganggap ini HTTPS
-    vars {
-        protocol https
+    # Header untuk reverse proxy (Nginx/Cloudflare)
+    # FrankenPHP berjalan di port 80 internal, tapi Nginx di depannya menangani HTTPS
+    # Oleh karena itu, kita teruskan header X-Forwarded-* dari reverse proxy
+    header {
+        X-Forwarded-Host {header.X-Forwarded-Host}
+        X-Forwarded-Port {header.X-Forwarded-Port}
     }
 
-    # Tambahkan header secara agresif
-    header {
-        X-Forwarded-Proto https
-        X-Forwarded-Host {host}
-        X-Forwarded-Port 443
+    # Jika reverse proxy mengirim X-Forwarded-Proto, gunakan itu
+    # Jika tidak (akses langsung/localhost), default ke http
+    @hasForwardedProto header X-Forwarded-Proto *
+    handle @hasForwardedProto {
+        # Biarkan header dari reverse proxy (Nginx) yang menentukan proto
+    }
+    handle {
+        header X-Forwarded-Proto http
     }
 
     php_server

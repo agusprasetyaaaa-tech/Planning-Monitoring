@@ -131,6 +131,13 @@ const closeDropdowns = (e) => {
     if (isFilterDropdownOpen.value && filterDropdown && !filterDropdown.contains(e.target) && !filterButton.contains(e.target)) {
         isFilterDropdownOpen.value = false;
     }
+
+    // Export Dropdown
+    const exportDropdown = document.getElementById('export-dropdown');
+    const exportButton = document.getElementById('export-dropdown-button');
+    if (isExportDropdownOpen.value && exportDropdown && !exportDropdown.contains(e.target) && !exportButton.contains(e.target)) {
+        isExportDropdownOpen.value = false;
+    }
 };
 
 window.addEventListener('click', closeDropdowns);
@@ -478,16 +485,14 @@ const getProgressData = (progressValue) => {
     <Head title="Planning Report" />
 
     <div class="space-y-4 font-sans p-4 sm:p-6 max-w-[1920px] mx-auto">
-        <!-- Page Title & Back Button -->
-        <div class="flex items-center gap-2 sm:gap-4 mb-2">
-            <!-- Back Button hidden on mobile -->
-            <Link v-if="!isSuperAdmin" :href="route('dashboard')" class="hidden lg:inline-flex group items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 shadow-sm hover:shadow hover:border-gray-300 text-gray-600 hover:text-gray-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 active:scale-[0.98]">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 group-hover:-translate-x-0.5 transition-transform duration-200">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-                </svg>
-                <span class="text-xs sm:text-sm font-bold">Back</span>
-            </Link>
-            <h2 class="text-[24px] leading-[32px] font-bold text-gray-900">Planning Report</h2>
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+                <Link v-if="!isSuperAdmin" :href="route('dashboard')" class="hidden sm:inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
+                    <span>Back</span>
+                </Link>
+                <h1 class="text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight">Planning Report</h1>
+            </div>
         </div>
 
         <!-- Table Container with Integrated Tabs and Toolbar -->
@@ -595,21 +600,21 @@ const getProgressData = (progressValue) => {
 
                         <!-- Export Button -->
                         <div class="relative">
-                            <button @click="() => { isExportDropdownOpen = !isExportDropdownOpen }" type="button" class="relative inline-flex items-center justify-center rounded-md bg-white p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-50 ring-1 ring-inset ring-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-600">
+                            <button id="export-dropdown-button" @click="isExportDropdownOpen = !isExportDropdownOpen" type="button" class="relative inline-flex items-center justify-center rounded-md bg-white p-2 text-gray-400 hover:text-gray-500 hover:bg-gray-50 ring-1 ring-inset ring-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-600">
                                 <span class="sr-only">Export</span>
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                                 </svg>
                             </button>
-                            <div v-if="isExportDropdownOpen" class="absolute right-0 z-20 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                            <div id="export-dropdown" v-if="isExportDropdownOpen" class="absolute right-0 z-20 mt-2 w-48 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
                                 <div class="py-1">
-                                    <a :href="`/planning-report/export-excel?tab=${currentTab}&search=${search}&start_date=${start_date}&end_date=${end_date}`" class="flex items-center gap-x-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    <a :href="`/planning-report/export-excel?tab=${currentTab}&search=${search}&start_date=${start_date}&end_date=${end_date}`" @click="isExportDropdownOpen = false" class="flex items-center gap-x-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                         <svg class="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                                         </svg>
                                         Export to Excel
                                     </a>
-                                    <a :href="`/planning-report/export-pdf?tab=${currentTab}&search=${search}&start_date=${start_date}&end_date=${end_date}`" class="flex items-center gap-x-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                    <a :href="`/planning-report/export-pdf?tab=${currentTab}&search=${search}&start_date=${start_date}&end_date=${end_date}`" @click="isExportDropdownOpen = false" class="flex items-center gap-x-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                         <svg class="h-5 w-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                                         </svg>

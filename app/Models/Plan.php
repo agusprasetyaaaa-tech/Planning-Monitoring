@@ -13,10 +13,11 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\User;
 use App\Models\Report;
+use App\Traits\HasActivityCode;
 
 class Plan extends Model
 {
-    use HasFactory;
+    use HasFactory, HasActivityCode;
 
     protected $fillable = [
         'customer_id',
@@ -267,63 +268,7 @@ class Plan extends Model
 
     public function getActivityCodeAttribute()
     {
-        $prefixMap = [
-            'Call' => 'C',
-            'Visit' => 'V',
-            'Ent' => 'E',
-            'Entertainment' => 'E',
-            'Online Meeting' => 'OM',
-            'Survey' => 'S',
-            'Presentation' => 'PR',
-            'Proposal' => 'PP',
-            'Negotiation' => 'N',
-            'Admin/Tender' => 'AT',
-            'Tender' => 'AT',
-            'Other' => 'O',
-        ];
-
-        $prefix = $prefixMap[$this->activity_type] ?? $this->generateDefaultPrefix($this->activity_type);
-
-        // Fetch all plans of this type for this customer & product, ordered by creation (ID)
-        // Optimization: Use whereIn to reduce queries if batch processing (future)
-        $plans = Plan::where('customer_id', $this->customer_id)
-            ->where('product_id', $this->product_id)
-            ->where('activity_type', $this->activity_type)
-            ->orderBy('id', 'asc')
-            ->get();
-
-        $counter = 1;
-        $myCode = $prefix . $counter; // Default fallback
-
-        // Iterate to simulate the sequence
-        foreach ($plans as $index => $plan) {
-            // Current Plan assigned the current counter value
-            if ($plan->id == $this->id) {
-                $myCode = $prefix . $counter;
-            }
-
-            // Logic to increment or hold counter
-            if ($plan->status === 'reported') {
-                // Success plan consumes the number
-                $counter++;
-            } else {
-                // Status is 'created' (Pending/Expired)
-                if ($index === count($plans) - 1) {
-                    // Latest created plan consumes number
-                    $counter++;
-                }
-            }
-        }
-
-        return $myCode;
+        return $this->calculateActivityCode();
     }
 
-    private function generateDefaultPrefix($type)
-    {
-        $words = explode(' ', $type);
-        if (count($words) > 1) {
-            return strtoupper(substr($words[0], 0, 1) . substr($words[1], 0, 1));
-        }
-        return strtoupper(substr($type, 0, 2));
-    }
 }

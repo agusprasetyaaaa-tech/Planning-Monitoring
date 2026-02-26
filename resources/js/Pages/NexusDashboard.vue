@@ -9,7 +9,8 @@ import DropdownLink from '@/Components/DropdownLink.vue';
 defineOptions({ layout: NexusLayout });
 
 const props = defineProps({
-    totalActivitiesCount: { type: Number, default: 0 },
+    totalPlanningCount: { type: Number, default: 0 },
+    totalDailyActivitiesCount: { type: Number, default: 0 },
     activeCustomerCount: { type: Number, default: 0 },
     totalCustomerCount: { type: Number, default: 0 },
     activitiesTrend: { type: Array, default: () => [] },
@@ -26,10 +27,11 @@ const props = defineProps({
     inactiveCustomers: { type: Array, default: () => [] }, // New Prop
     customerActivityBreakdown: { type: Array, default: () => [] }, // Activity Breakdown
     dailyActivityTrend: { type: Array, default: () => [] }, // Daily Activity Trend
-    teams: { type: Array, default: () => [] },
     users: { type: Array, default: () => [] },
+    teams: { type: Array, default: () => [] }, // Add teams prop
     filters: { type: Object, default: () => ({}) },
     timeUnit: { type: String, default: 'days' },
+    activity_type_map: { type: Object, default: () => ({}) },
 });
 
 const filterForm = ref({
@@ -162,21 +164,37 @@ const activityTypes = computed(() => {
 
 // Activity Colors (matching reference image)
 const activityColors = computed(() => ({
+    'V': '#d946ef',  // Visit
+    'E': '#f59e0b',  // Ent
+    'OM': '#ef4444', // Online Meeting
+    'C': '#22c55e',  // Call
+    'S': '#8b5cf6',  // Survey
+    'AT': '#06b6d4', // Admin/Tender
+    'PP': '#f97316', // Proposal
+    'PR': '#0ea5e9', // Presentation
+    'CL': '#000000', // Closing
+    'N': '#ec4899',  // Negotiation
+    'O': '#6366f1',  // Other
+    'EM': '#f43f5e', // Email
+    
+    // Backward Compatibility
     'Visit': '#d946ef',
-    'Ent': '#f59e0b', // Amber (Swapped with Call)
+    'Ent': '#f59e0b',
     'Entertainment': '#f59e0b',
     'Online meeting': '#ef4444',
     'Online Meeting': '#ef4444',
-    'Call': '#22c55e', // Green (Requested)
+    'Call': '#22c55e',
+    'Phone Call': '#22c55e',
     'Survey': '#8b5cf6',
-    'Admin/Tender': '#06b6d4', // Cyan
-    'Tender': '#06b6d4', // Cyan
-    'Administration tender': '#06b6d4', // Cyan
+    'Admin/Tender': '#06b6d4',
+    'Tender': '#06b6d4',
+    'Administration tender': '#06b6d4',
     'Proposal': '#f97316',
     'Presentation': '#0ea5e9',
     'Closing': '#000000',
     'Negotiation': '#ec4899',
-    'Other': '#6366f1' // Indigo (Distinct from Green/Cyan)
+    'Other': '#6366f1',
+    'Email': '#f43f5e'
 }));
 
 // Max total activity for Y-axis
@@ -322,16 +340,17 @@ const calculateChartSegments = (data, radius = 40, innerRadius = 0) => {
         }
         
         // Resolve Color
-        let color = colorMap[Object.keys(colorMap).find(k => k.toLowerCase() === label.toLowerCase())] 
-                   || colorMap[label] 
+        let color = activityColors.value[label] 
+                   || activityColors.value[props.activity_type_map[label]]
                    || defaultColors[colorIndex % defaultColors.length];
 
+        const fullLabel = props.activity_type_map[label] || label;
         const percentage = Math.round((value / total) * 100);
 
         segments.push({
             d: pathStr,
             color: color,
-            label: label,
+            label: fullLabel,
             value: value,
             percentage: percentage,
             formattedPercentage: (value / total * 100).toFixed(1) + '%',
@@ -384,26 +403,15 @@ let customerHealthChartInstance = null;
 // Activity Marketing Chart Data
 const activityMarketingData = computed(() => {
     const distribution = props.activityDistribution || {};
-    const rawLabels = Object.keys(distribution);
+    const rawKeys = Object.keys(distribution);
     const data = Object.values(distribution);
-    const total = data.reduce((a, b) => a + b, 0);
+    
+    // Map short codes (C, OM, V, etc.) to full activity names
+    const labels = rawKeys.map(key => props.activity_type_map[key] || key);
 
-    const labels = rawLabels; // percentages removed as requested
-
-    const colors = rawLabels.map(label => {
-        const colorMap = {
-            'Online Meeting': '#ef4444',
-            'Visit': '#d946ef',
-            'Survey': '#8b5cf6',
-            'Call': '#22c55e', // Green
-            'Other': '#6366f1', // Indigo
-            'Negotiation': '#ec4899',
-            'Ent': '#f59e0b', // Amber
-            'Presentation': '#0ea5e9',
-            'Administration tender': '#06b6d4',
-            'Proposal': '#f97316',
-        };
-        return colorMap[label] || '#6366f1';
+    // Resolve colors based on the activity code using the global activityColors object
+    const colors = rawKeys.map(key => {
+        return activityColors.value[key] || activityColors.value[props.activity_type_map[key]] || '#6366f1';
     });
     
     return { labels, data, colors };
@@ -684,10 +692,11 @@ watch(() => props.customerHealthStats, () => {
 </script>
 
 <template>
-    <Head title="Dashboard" />
-    
-    <!-- DASHBOARD FOR SUPER ADMIN -->
-    <template v-if="isSuperAdmin">
+    <div class="dashboard-wrapper">
+        <Head title="Dashboard" />
+        
+        <!-- DASHBOARD FOR SUPER ADMIN -->
+        <template v-if="isSuperAdmin">
         <!-- Dashboard Header -->
         <div class="mb-6">
             <h1 class="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
@@ -730,27 +739,45 @@ watch(() => props.customerHealthStats, () => {
         </div>
 
         <!-- Stats Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
             
-            <!-- Stat Card 1: Total Activities -->
+            <!-- Stat Card 1: Total Daily Activity -->
             <div class="bg-gray-100 rounded-2xl pt-5 px-3 pb-3">
-                <h3 class="text-gray-900 text-lg font-bold ml-3 mb-4">Total Activities</h3>
+                <h3 class="text-gray-900 text-lg font-bold ml-3 mb-4">Total Daily Activity</h3>
                 <div class="bg-white rounded-2xl p-5">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-gray-900 text-4xl font-extrabold mb-1">{{ totalActivitiesCount }}</p>
+                            <p class="text-gray-900 text-4xl font-extrabold mb-1">{{ totalDailyActivitiesCount }}</p>
                             <p class="text-gray-500 text-sm font-medium">All reports</p>
+                        </div>
+                        <div class="w-16 h-16 bg-[#f59e0b] rounded-full flex items-center justify-center">
+                             <svg class="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stat Card 2: Total Planning -->
+            <div class="bg-gray-100 rounded-2xl pt-5 px-3 pb-3">
+                <h3 class="text-gray-900 text-lg font-bold ml-3 mb-4">Total Planning</h3>
+                <div class="bg-white rounded-2xl p-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-gray-900 text-4xl font-extrabold mb-1">{{ totalPlanningCount }}</p>
+                            <p class="text-gray-500 text-sm font-medium">All plans</p>
                         </div>
                         <div class="w-16 h-16 bg-[#4169E1] rounded-full flex items-center justify-center">
                             <svg class="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                         </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Stat Card 2: Active Customers -->
+            <!-- Stat Card 3: Active Customers -->
             <div class="bg-gray-100 rounded-2xl pt-5 px-3 pb-3">
                 <h3 class="text-gray-900 text-lg font-bold ml-3 mb-4">Active Customers</h3>
                 <div class="bg-white rounded-2xl p-5">
@@ -768,7 +795,7 @@ watch(() => props.customerHealthStats, () => {
                 </div>
             </div>
     
-            <!-- Stat Card 3: Total Customers -->
+            <!-- Stat Card 4: Total Customers -->
             <div class="bg-gray-100 rounded-2xl pt-5 px-3 pb-3">
                 <h3 class="text-gray-900 text-lg font-bold ml-3 mb-4">Total Customers</h3>
                 <div class="bg-white rounded-2xl p-5">
@@ -946,11 +973,11 @@ watch(() => props.customerHealthStats, () => {
                               <div class="absolute -bottom-6 left-1/2 -translate-x-1/2 -translate-y-full mb-3 hidden group-hover:flex flex-col items-start z-[100] pointer-events-none transition-opacity duration-200 min-w-max">
                                   <div class="bg-gray-900 text-white text-xs rounded-md py-2 px-3 shadow-xl mb-1">
                                       <div class="font-bold uppercase tracking-wide border-b border-gray-700 pb-1 mb-2 whitespace-nowrap text-center">
-                                          {{ customer.name }} {{ Math.round((customer.total / (paginatedActivityCustomers.reduce((sum, c) => sum + c.total, 0) || 1)) * 100) }}%
+                                          {{ customer.name }} - {{ customer.max_progress || 0 }}%
                                       </div>
                                       <div v-for="(count, activityType) in customer.activities" :key="'tt-'+activityType" class="flex items-center gap-2 mb-1">
                                           <span class="w-3 h-3 rounded-full flex-shrink-0" :style="{ backgroundColor: activityColors[activityType] }"></span>
-                                          <span class="whitespace-nowrap">{{ activityType }}: {{ count }}</span>
+                                          <span class="whitespace-nowrap">{{ props.activity_type_map[activityType] || activityType }}: {{ count }}</span>
                                       </div>
                                   </div>
                                   <div class="w-2 h-2 bg-gray-900 rotate-45 -mt-1.5 self-center"></div>
@@ -976,7 +1003,7 @@ watch(() => props.customerHealthStats, () => {
                     <div class="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-6 pb-6 border-b border-gray-100">
                         <div v-for="type in activityTypes" :key="type" class="flex items-center gap-2">
                             <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: activityColors[type] || '#9ca3af' }"></span>
-                            <span class="text-xs text-gray-600 font-medium">{{ type }}</span>
+                            <span class="text-xs text-gray-600 font-medium">{{ props.activity_type_map[type] || type }}</span>
                         </div>
                     </div>
 
@@ -1116,7 +1143,7 @@ watch(() => props.customerHealthStats, () => {
                  </div>
              </div>
 
-             <div class="px-6 md:px-8 pt-8 pb-6 mx-auto max-w-7xl">
+             <div class="px-6 md:px-8 pt-8 pb-6 mx-auto max-w-[1920px]">
                  <div class="flex items-center justify-between">
                      <div class="flex flex-col">
                          <span class="text-blue-100 font-medium text-sm md:text-base mb-1">Welcome back,</span>
@@ -1241,7 +1268,7 @@ watch(() => props.customerHealthStats, () => {
         </div>
 
         <!-- Main Content -->
-        <div class="max-w-7xl mx-auto px-6 md:px-8 pb-12">
+        <div class="max-w-[1920px] mx-auto px-6 md:px-8 pb-12">
             <!-- Action & Status Group Box -->
             <div class="hidden lg:block bg-white rounded-[2.5rem] p-6 md:p-10 shadow-lg border border-gray-100 relative overflow-hidden mb-12">
                  <!-- Decorative Top Object -->
@@ -1254,7 +1281,19 @@ watch(() => props.customerHealthStats, () => {
                 </div>
 
                 <!-- Quick Actions Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12 relative z-10">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 relative z-10">
+
+                    <!-- Daily Reports Card -->
+                    <Link :href="route('daily-report.index')" class="group relative overflow-hidden bg-gray-50 rounded-3xl p-8 border border-gray-100 hover:bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                        <div class="absolute top-0 right-0 w-32 h-32 bg-amber-100/50 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500"></div>
+                        <div class="relative z-10">
+                            <div class="w-14 h-14 bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl flex items-center justify-center text-white mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg">
+                                <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            </div>
+                            <h3 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-amber-600 transition-colors">Daily</h3>
+                            <p class="text-sm text-gray-500">Record Sales Activities</p>
+                        </div>
+                    </Link>
 
                     <!-- Planning Card -->
                     <Link :href="route('planning.index')" class="group relative overflow-hidden bg-gray-50 rounded-3xl p-8 border border-gray-100 hover:bg-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
@@ -1275,7 +1314,7 @@ watch(() => props.customerHealthStats, () => {
                             <div class="w-14 h-14 bg-gradient-to-br from-[#226ed9] to-[#1b5bb5] rounded-2xl flex items-center justify-center text-white mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg">
                                 <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             </div>
-                            <h3 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-[#226ed9] transition-colors">Reports</h3>
+                            <h3 class="text-xl font-bold text-gray-900 mb-2 group-hover:text-[#226ed9] transition-colors">Planning Reports</h3>
                             <p class="text-sm text-gray-500">Performance Insights</p>
                         </div>
                     </Link>
@@ -1392,18 +1431,28 @@ watch(() => props.customerHealthStats, () => {
                 </div>
 
                 <!-- Key Metrics Section -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
                     <!-- Stat Card 1 -->
                     <div class="bg-gray-50 rounded-3xl p-6 border border-gray-100 flex items-center justify-between hover:bg-gray-100 transition-colors">
                         <div>
-                            <p class="text-gray-500 text-sm font-bold mb-1">Total Activities</p>
-                            <p class="text-gray-900 text-3xl font-black">{{ totalActivitiesCount }}</p>
+                            <p class="text-gray-500 text-sm font-bold mb-1">Total Daily Activity</p>
+                            <p class="text-gray-900 text-3xl font-black">{{ totalDailyActivitiesCount }}</p>
                         </div>
-                        <div class="w-14 h-14 bg-white text-blue-600 rounded-2xl flex items-center justify-center shadow-sm">
-                            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 002 2h2a2 2 0 002-2z" /></svg>
+                        <div class="w-14 h-14 bg-white text-amber-600 rounded-2xl flex items-center justify-center shadow-sm">
+                             <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                         </div>
                     </div>
-                     <!-- Stat Card 2 -->
+                    <!-- Stat Card 2 -->
+                    <div class="bg-gray-50 rounded-3xl p-6 border border-gray-100 flex items-center justify-between hover:bg-gray-100 transition-colors">
+                        <div>
+                            <p class="text-gray-500 text-sm font-bold mb-1">Total Planning</p>
+                            <p class="text-gray-900 text-3xl font-black">{{ totalPlanningCount }}</p>
+                        </div>
+                        <div class="w-14 h-14 bg-white text-blue-600 rounded-2xl flex items-center justify-center shadow-sm">
+                            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        </div>
+                    </div>
+                     <!-- Stat Card 3 -->
                     <div class="bg-gray-50 rounded-3xl p-6 border border-gray-100 flex items-center justify-between hover:bg-gray-100 transition-colors">
                         <div>
                             <p class="text-gray-500 text-sm font-bold mb-1">Active Customers</p>
@@ -1413,7 +1462,7 @@ watch(() => props.customerHealthStats, () => {
                              <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                         </div>
                     </div>
-                     <!-- Stat Card 3 -->
+                     <!-- Stat Card 4 -->
                     <div class="bg-gray-50 rounded-3xl p-6 border border-gray-100 flex items-center justify-between hover:bg-gray-100 transition-colors">
                         <div>
                              <p class="text-gray-500 text-sm font-bold mb-1">Total Customers</p>
@@ -1504,7 +1553,7 @@ watch(() => props.customerHealthStats, () => {
                                        <div class="absolute -bottom-6 left-1/2 -translate-x-1/2 -translate-y-full mb-3 hidden group-hover:flex flex-col items-start z-[100] pointer-events-none transition-opacity duration-200 min-w-max">
                                             <div class="bg-gray-900 text-white text-xs rounded-md py-2 px-3 shadow-xl mb-1">
                                                  <div class="font-bold uppercase tracking-wide border-b border-gray-700 pb-1 mb-2 whitespace-nowrap text-center">{{ customer.name }} {{ Math.round((customer.total / (paginatedActivityCustomers.reduce((sum, c) => sum + c.total, 0) || 1)) * 100) }}%</div>
-                                                 <div v-for="(count, activityType) in customer.activities" :key="'tt-'+activityType" class="flex items-center gap-2 mb-1"><span class="w-3 h-3 rounded-full flex-shrink-0" :style="{ backgroundColor: activityColors[activityType] }"></span><span class="whitespace-nowrap">{{ activityType }}: {{ count }}</span></div>
+                                                 <div v-for="(count, activityType) in customer.activities" :key="'tt-'+activityType" class="flex items-center gap-2 mb-1"><span class="w-3 h-3 rounded-full flex-shrink-0" :style="{ backgroundColor: activityColors[activityType] }"></span><span class="whitespace-nowrap">{{ props.activity_type_map[activityType] || activityType }}: {{ count }}</span></div>
                                             </div>
                                             <div class="w-2 h-2 bg-gray-900 rotate-45 -mt-1.5 self-center"></div>
                                        </div>
@@ -1516,7 +1565,7 @@ watch(() => props.customerHealthStats, () => {
                     <div class="h-32"></div>
                     <div class="text-center text-sm font-bold text-gray-700 mb-6 select-none">Customer Name</div>
                     <div class="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-6 pb-6 border-b border-gray-100">
-                        <div v-for="type in activityTypes" :key="type" class="flex items-center gap-2"><span class="w-3 h-3 rounded-full" :style="{ backgroundColor: activityColors[type] || '#9ca3af' }"></span><span class="text-xs text-gray-600 font-medium">{{ type }}</span></div>
+                        <div v-for="type in activityTypes" :key="type" class="flex items-center gap-2"><span class="w-3 h-3 rounded-full" :style="{ backgroundColor: activityColors[type] || '#9ca3af' }"></span><span class="text-xs text-gray-600 font-medium">{{ props.activity_type_map[type] || type }}</span></div>
                     </div>
                     <div class="flex items-center justify-end gap-4 px-4 select-none">
                         <span class="text-sm text-gray-500">Page {{ currentActivityPage }} of {{ activityTotalPages }}</span>
@@ -1535,68 +1584,66 @@ watch(() => props.customerHealthStats, () => {
                 </div>
             </div>
 
-            <!-- Footer -->
-            <div class="text-center">
-                <p class="text-sm text-gray-400 font-medium">&copy; 2025 Planly App • Created by Agus Prasetya</p>
-            </div>
+            <!-- Footer Removed -->
         </div>
-
-        <!-- Custom Animations -->
-        <style scoped>
-        @keyframes blob {
-            0%, 100% { transform: translate(0, 0) scale(1); }
-            25% { transform: translate(20px, -20px) scale(1.1); }
-            50% { transform: translate(-20px, 20px) scale(0.9); }
-            75% { transform: translate(10px, 10px) scale(1.05); }
-        }
-        .animate-blob {
-            animation: blob 7s infinite;
-        }
-        .animation-delay-2000 {
-            animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-            animation-delay: 4s;
-        }
-        
-        /* Bar Chart Animations */
-        @keyframes barHeight {
-            0%, 100% { 
-                transform: scaleY(1);
-            }
-            50% { 
-                transform: scaleY(0.5);
-            }
-        }
-        
-        .animate-bar-1 {
-            animation: barHeight 2s ease-in-out infinite;
-            transform-origin: bottom;
-        }
-        .animate-bar-2 {
-            animation: barHeight 2.3s ease-in-out infinite;
-            animation-delay: 0.2s;
-            transform-origin: bottom;
-        }
-        .animate-bar-3 {
-            animation: barHeight 2.5s ease-in-out infinite;
-            animation-delay: 0.4s;
-            transform-origin: bottom;
-        }
-        .animate-bar-4 {
-            animation: barHeight 2.2s ease-in-out infinite;
-            animation-delay: 0.6s;
-            transform-origin: bottom;
-        }
-        .animate-bar-5 {
-            animation: barHeight 2.4s ease-in-out infinite;
-            animation-delay: 0.8s;
-            transform-origin: bottom;
-        }
-        </style>
     </template>
 
+    </div>
 </template>
+
+<style scoped>
+/* Scoped Animations */
+@keyframes blob {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    25% { transform: translate(20px, -20px) scale(1.1); }
+    50% { transform: translate(-20px, 20px) scale(0.9); }
+    75% { transform: translate(10px, 10px) scale(1.05); }
+}
+.animate-blob {
+    animation: blob 7s infinite;
+}
+.animation-delay-2000 {
+    animation-delay: 2s;
+}
+.animation-delay-4000 {
+    animation-delay: 4s;
+}
+
+/* Bar Chart Animations */
+@keyframes barHeight {
+    0%, 100% { 
+        transform: scaleY(1);
+    }
+    50% { 
+        transform: scaleY(0.5);
+    }
+}
+
+.animate-bar-1 {
+    animation: barHeight 2s ease-in-out infinite;
+    transform-origin: bottom;
+}
+.animate-bar-2 {
+    animation: barHeight 2.3s ease-in-out infinite;
+    animation-delay: 0.2s;
+    transform-origin: bottom;
+}
+.animate-bar-3 {
+    animation: barHeight 2.5s ease-in-out infinite;
+    animation-delay: 0.4s;
+    transform-origin: bottom;
+}
+.animate-bar-4 {
+    animation: barHeight 2.2s ease-in-out infinite;
+    animation-delay: 0.6s;
+    transform-origin: bottom;
+}
+.animate-bar-5 {
+    animation: barHeight 2.4s ease-in-out infinite;
+    animation-delay: 0.8s;
+    transform-origin: bottom;
+}
+</style>
 
 <style>
 /* Global Bar Chart Animations (not scoped to work properly) */

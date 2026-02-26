@@ -29,7 +29,7 @@ export default defineConfig(({ mode }) => {
                 injectRegister: 'auto',
                 base: '/',
                 devOptions: {
-                    enabled: !isProduction
+                    enabled: false  // PWA hanya aktif di production build
                 },
                 workbox: {
                     // TAMBAHKAN INI: Mengatasi error "non-precached-url"
@@ -42,7 +42,7 @@ export default defineConfig(({ mode }) => {
                     clientsClaim: isProduction,
                 },
                 manifest: {
-                    name: 'Planning Monitoring System',
+                    name: 'Planly App',
                     short_name: 'PlanlyApp',
                     description: 'Planning and Monitoring Application',
                     theme_color: '#2563eb',

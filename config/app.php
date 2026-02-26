@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Planning Monitoring System'),
+    'name' => env('APP_NAME', 'Planly App'),
 
     /*
     |--------------------------------------------------------------------------

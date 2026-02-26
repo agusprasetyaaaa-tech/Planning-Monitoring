@@ -19,11 +19,17 @@ class SecurityCheck
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // Skip security check for authentication routes to prevent login blocking
+        if ($request->is('login', 'register', 'logout', 'forgot-password', 'reset-password/*', 'sanctum/*')) {
+            return $next($request);
+        }
+
         // Cache settings for 60 seconds to reduce DB load
         $settings = Cache::remember('security_settings', 60, function () {
             try {
                 return SecuritySetting::first();
             } catch (\Exception $e) {
+                Log::warning('SecurityCheck: Could not load security settings: ' . $e->getMessage());
                 return null;
             }
         });

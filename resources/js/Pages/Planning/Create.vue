@@ -216,15 +216,16 @@ const submit = () => {
                  <div v-if="form.errors.project_name" class="text-red-500 text-xs mt-1 font-medium">{{ form.errors.project_name }}</div>
             </div>
 
-            <!-- Product (Read-only - auto filled from Customer) -->
+            <!-- Product (Editable - syncs with Customer) -->
             <div>
                  <label class="block text-sm font-bold text-gray-700 mb-2">Product</label>
-                 <div class="w-full px-4 py-3 rounded-xl bg-gray-50 border-0 flex items-center justify-between text-sm">
-                    <span :class="selectedProductName ? 'text-gray-900 font-semibold' : 'text-gray-400 italic'">
-                        {{ selectedProductName || 'Auto-filled from customer' }}
-                    </span>
-                    <span v-if="selectedProductName" class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 uppercase tracking-wide">Product</span>
-                 </div>
+                 <select v-model="form.product_id"
+                    class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm bg-white shadow-sm cursor-pointer"
+                 >
+                    <option value="">No Product</option>
+                    <option v-for="product in products" :key="product.id" :value="product.id">{{ product.name }}</option>
+                 </select>
+                 <p v-if="form.product_id" class="text-[10px] text-emerald-500 mt-1 italic">* Product change here will also update the customer profile.</p>
                  <div v-if="form.errors.product_id" class="text-red-500 text-xs mt-1 font-medium">{{ form.errors.product_id }}</div>
             </div>
 

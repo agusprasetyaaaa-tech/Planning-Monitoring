@@ -5,10 +5,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0, user-scalable=no">
 
-    {{-- Memastikan semua request menggunakan HTTPS --}}
-    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    {{-- Memastikan semua request menggunakan HTTPS (hanya di production) --}}
+    @production
+        <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    @endproduction
 
-    <meta name="apple-mobile-web-app-title" content="{{ config('app.name', 'Planning Monitoring System') }}">
+    <meta name="apple-mobile-web-app-title" content="{{ config('app.name', 'Planly App') }}">
 
     {{-- --- UPDATE FAVICON MENGGUNAKAN LOGO.PNG --- --}}
     <link rel="icon" type="image/png" href="{{ asset('logo/logo.png') }}">

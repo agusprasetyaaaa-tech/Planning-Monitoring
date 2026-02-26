@@ -47,7 +47,7 @@ class CustomerController extends Controller
 
     public function index(Request $request)
     {
-        $query = Customer::select('id', 'company_name', 'product_id', 'marketing_sales_id', 'created_at')
+        $query = Customer::select('id', 'company_name', 'product_id', 'marketing_sales_id', 'created_at', 'planning_start_date')
             ->with(['product:id,name', 'marketing:id,name']);
 
         if ($request->search) {
@@ -151,6 +151,7 @@ class CustomerController extends Controller
             'company_name' => 'required|string|max:255',
             'product_id' => 'required|exists:products,id',
             'marketing_sales_id' => 'required|exists:users,id',
+            'planning_start_date' => 'nullable|date',
         ]);
 
         // Check for duplicate: same company_name with same product_id
@@ -184,6 +185,7 @@ class CustomerController extends Controller
             'company_name' => 'required|string|max:255',
             'product_id' => 'required|exists:products,id',
             'marketing_sales_id' => 'required|exists:users,id',
+            'planning_start_date' => 'nullable|date',
         ]);
 
         // Check for duplicate: same company_name with same product_id (excluding current customer)

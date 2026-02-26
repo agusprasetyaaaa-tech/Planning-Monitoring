@@ -346,6 +346,23 @@ const pageNumbers = computed(() => {
                                 </div>
                             </th>
 
+                            <th scope="col" @click="toggleSort('planning_start_date')" class="whitespace-nowrap px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer group select-none hover:bg-gray-50 transition-colors">
+                                <div class="flex items-center gap-1">
+                                    Planning Start Date
+                                    <div class="p-1 rounded-md" :class="{'bg-gray-100': sortField === 'planning_start_date'}">
+                                        <svg v-if="sortField === 'planning_start_date' && sortDirection === 'asc'" class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h9.75m4.5-4.5v12m0 0-3.75-3.75M17.25 21 21 17.25" />
+                                        </svg>
+                                        <svg v-else-if="sortField === 'planning_start_date' && sortDirection === 'desc'" class="h-4 w-4 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                           <path stroke-linecap="round" stroke-linejoin="round" d="M3 4.5h14.25M3 9h9.75M3 13.5h9.75m4.5-4.5v12m0 0-3.75-3.75M17.25 21 21 17.25" style="transform: scaleY(-1); transform-origin: center;" /> 
+                                        </svg>
+                                        <svg v-else class="h-4 w-4 text-gray-400 transition-opacity" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7.5L7.5 3m0 0L12 7.5M7.5 3v13.5m13.5 0L16.5 21m0 0L12 16.5m4.5 4.5V7.5" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </th>
+
                             <th scope="col" class="relative whitespace-nowrap px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
@@ -363,6 +380,12 @@ const pageNumbers = computed(() => {
                                 <span v-else class="text-gray-500">-</span>
                             </td>
                             <td class="whitespace-nowrap px-6 py-4 text-xs text-gray-500">{{ customer.marketing?.name || '-' }}</td>
+                            <td class="whitespace-nowrap px-6 py-4 text-xs text-gray-500">
+                                <span v-if="customer.planning_start_date" class="px-2 py-1 bg-yellow-50 text-yellow-700 rounded-md border border-yellow-200">
+                                    {{ customer.planning_start_date }}
+                                </span>
+                                <span v-else class="text-gray-400 italic">Default (Created At)</span>
+                            </td>
                             <td class="whitespace-nowrap px-6 py-4 text-right text-xs font-medium">
                                 <div class="flex items-center justify-end gap-2">
                                     <Link :href="route('customers.edit', customer.id)" class="text-gray-400 hover:text-emerald-600 transition-colors" title="Edit">
@@ -379,7 +402,7 @@ const pageNumbers = computed(() => {
                             </td>
                         </tr>
                         <tr v-if="customers.data.length === 0">
-                            <td colspan="6" class="px-6 py-12 text-center text-sm text-gray-500">
+                            <td colspan="7" class="px-6 py-12 text-center text-sm text-gray-500">
                                 No customers found matching your search.
                             </td>
                         </tr>

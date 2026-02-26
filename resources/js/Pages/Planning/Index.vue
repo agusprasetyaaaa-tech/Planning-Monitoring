@@ -34,8 +34,8 @@ const closeDetail = () => {
 
 
 const activityTypes = [
-    'Call', 'Visit', 'Ent', 'Online Meeting', 'Survey', 
-    'Presentation', 'Proposal', 'Negotiation', 'Admin/Tender', 'Other'
+    'Call', 'Visit', 'Ent', 'Online Meeting', 'Email', 'Survey', 
+    'Presentation', 'Proposal', 'Negotiation', 'Admin/Tender', 'Closing', 'Other'
 ];
 
 const progressOptions = [
@@ -350,7 +350,7 @@ const getPlanningStatus = (customer) => {
 
     // 0b. SPECIAL: ESCALATION PLAN (Treat as No Plan for visual warning)
     if (plan && plan.activity_type === 'ESCALATION') {
-        const age = getDiffValue(customer.created_at);
+        const age = getDiffValue(customer.planning_start_date || customer.created_at);
         if (age >= warningThreshold) return 'no_plan_warning';
         return 'none';
     }
@@ -364,7 +364,7 @@ const getPlanningStatus = (customer) => {
 
     // 1. KASUS TIDAK ADA PLAN SAMA SEKALI (Masalah Customer)
     if (!plan) {
-        const age = getDiffValue(customer.created_at);
+        const age = getDiffValue(customer.planning_start_date || customer.created_at);
         // Jika customer baru tapi didiamkan > Threshold -> BLINKING RED (Warning)
         if (age >= warningThreshold) {
             return 'no_plan_warning'; 
@@ -1569,16 +1569,14 @@ const formatDate = (dateStr) => {
 
 
     <div class="space-y-4 font-sans p-4 sm:p-6 max-w-[1920px] mx-auto">
-        <!-- Header -->
-        <div class="flex items-center gap-2 sm:gap-4 mb-2">
-            <!-- Back Button for Non-SuperAdmin (Mobile Users) -->
-            <Link v-if="!isSuperAdmin" :href="route('dashboard')" class="hidden lg:inline-flex group items-center gap-2 px-4 py-2 rounded-xl bg-white border border-gray-200 shadow-sm hover:shadow hover:border-gray-300 text-gray-600 hover:text-gray-900 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 active:scale-[0.98]">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4 group-hover:-translate-x-0.5 transition-transform duration-200">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-                </svg>
-                <span class="text-xs sm:text-sm font-bold">Back</span>
-            </Link>
-            <h2 class="text-[24px] leading-[32px] font-bold text-gray-900">Planning</h2>
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+                <Link v-if="!isSuperAdmin" :href="route('dashboard')" class="hidden sm:inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 transition-colors">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
+                    <span>Back</span>
+                </Link>
+                <h1 class="text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight">Planning</h1>
+            </div>
         </div>
 
         <!-- Table Container -->
@@ -1751,7 +1749,7 @@ const formatDate = (dateStr) => {
                                 <!-- Badge -->
                                 <div class="relative group flex flex-col items-center">
                                     <div v-if="getPlanningStatus(customer) === 'none'" class="h-10 w-10 rounded-full bg-gray-200 border border-gray-300"></div>
-                                    <div v-else-if="getPlanningStatus(customer) === 'no_plan_warning'" :style="getBlinkStyle(customer.created_at)" class="h-10 w-10 rounded-full bg-red-600 animate-glow-red shadow-md border-2 border-red-400"></div>
+                                    <div v-else-if="getPlanningStatus(customer) === 'no_plan_warning'" :style="getBlinkStyle(customer.planning_start_date || customer.created_at)" class="h-10 w-10 rounded-full bg-red-600 animate-glow-red shadow-md border-2 border-red-400"></div>
                                     <div v-else-if="customer.latest_plan" 
                                          class="h-10 w-10 rounded-full flex items-center justify-center text-[10px] font-bold text-white shadow-sm transition-all duration-300"
                                          :class="{
@@ -2113,7 +2111,7 @@ const formatDate = (dateStr) => {
                                     <!-- 2. NO PLAN (GRAY) -->
                                 <div v-if="getPlanningStatus(customer) === 'none'" class="h-10 w-10 rounded-full bg-gray-200 border border-gray-300"></div>
                                     <!-- 2. No Plan Warning (Inactive Customer) -->
-                                    <div v-else-if="getPlanningStatus(customer) === 'no_plan_warning'" :style="getBlinkStyle(customer.created_at)" class="h-10 w-10 rounded-full bg-red-500 animate-glow-red border border-red-300 shadow-md"></div>
+                                    <div v-else-if="getPlanningStatus(customer) === 'no_plan_warning'" :style="getBlinkStyle(customer.planning_start_date || customer.created_at)" class="h-10 w-10 rounded-full bg-red-500 animate-glow-red border border-red-300 shadow-md"></div>
                                     
                                     <!-- 3. Existing Plan (Created, Reported, Expired, Warning) -->
                                     <div v-else-if="customer.latest_plan" 
@@ -2955,7 +2953,8 @@ const formatDate = (dateStr) => {
     <!-- Action Confirmation Modal - Premium Design (Optimized) -->
     <Modal :show="showActionConfirm" @close="closeActionModal" max-width="lg" :noPadding="true">
         <div class="flex flex-col sm:flex-row overflow-hidden">
-            <!-- Left Icon Panel - Solid Color -->\n            <div class="relative flex-shrink-0 w-full sm:w-20 flex items-center justify-center py-6 sm:py-0 sm:min-h-[200px] sm:rounded-l-xl overflow-hidden"
+            <!-- Left Icon Panel - Solid Color -->
+            <div class="relative flex-shrink-0 w-full sm:w-20 flex items-center justify-center py-6 sm:py-0 sm:min-h-[200px] sm:rounded-l-xl overflow-hidden"
                  :class="{
                      'bg-red-600': actionStatus === 'rejected' || actionStatus === 'failed',
                      'bg-amber-500': actionStatus === 'escalated',

@@ -34,10 +34,21 @@ class CustomersImport implements ToModel, WithHeadingRow
             return null;
         }
 
+        // Parse date properly (handle both Excel float date or standard YYYY-MM-DD string)
+        $planningStartDate = null;
+        if (!empty($row['planning_start_date'])) {
+            if (is_numeric($row['planning_start_date'])) {
+                $planningStartDate = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row['planning_start_date'])->format('Y-m-d');
+            } else {
+                $planningStartDate = date('Y-m-d', strtotime($row['planning_start_date']));
+            }
+        }
+
         return new Customer([
             'company_name' => $row['company_name'],
             'product_id' => $product?->id,
             'marketing_sales_id' => $user?->id,
+            'planning_start_date' => $planningStartDate,
         ]);
     }
 }

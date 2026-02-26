@@ -12,6 +12,7 @@ class CustomersTemplate implements WithHeadings
             'Company Name',
             'Product',
             'Marketing Sales',
+            'Planning Start Date',
         ];
     }
 }

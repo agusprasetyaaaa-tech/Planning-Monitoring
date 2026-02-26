@@ -617,6 +617,15 @@ class PlanningController extends Controller
         $managerStatus = $request->manager_status ?? null;
         $managerReviewedAt = ($managerStatus && $managerStatus !== 'pending') ? TimeSetting::testingNow() : null;
 
+        // AUTO-UPDATE CUSTOMER PRODUCT
+        // If user changes product here, update the default product in Customer record
+        if ($request->product_id) {
+            $customer = Customer::find($request->customer_id);
+            if ($customer && $customer->product_id != $request->product_id) {
+                $customer->update(['product_id' => $request->product_id]);
+            }
+        }
+
         Plan::create([
             'user_id' => Auth::id(),
             'customer_id' => $request->customer_id,

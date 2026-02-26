@@ -11,8 +11,11 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        // 1. Tambahkan TrustProxies agar Laravel mengenali HTTPS dari Nginx
-        $middleware->trustProxies(at: '*');
+        // 1. TrustProxies: Hanya aktifkan di production (behind reverse proxy/Nginx)
+        // Di localhost, trust proxies '*' menyebabkan redirect HTTPS yang salah
+        if (env('APP_ENV') !== 'local') {
+            $middleware->trustProxies(at: '*');
+        }
 
         // 2. Middleware SecurityCheck yang Anda miliki
         $middleware->append(\App\Http\Middleware\SecurityCheck::class);

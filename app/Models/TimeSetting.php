@@ -31,6 +31,6 @@ class TimeSetting extends Model
         $settings = self::first();
         $offset = $settings->time_offset_days ?? 0;
 
-        return now()->addDays($offset);
+        return \Carbon\Carbon::now()->addDays($offset);
     }
 }
