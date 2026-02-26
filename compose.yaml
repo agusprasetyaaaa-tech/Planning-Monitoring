@@ -2,7 +2,6 @@ services:
     # ============================================================
     # SERVICE PRODUCTION: FrankenPHP
     # Digunakan untuk deploy ke VPS/production
-    # Jalankan: docker compose up app mysql -d
     # ============================================================
     app:
         build:
@@ -10,8 +9,6 @@ services:
             dockerfile: Dockerfile
         ports:
             - "${APP_PORT_PROD:-8081}:80"
-        # JANGAN mount volume di production! Gunakan COPY dari Dockerfile
-        # volumes hanya untuk development jika diperlukan
         environment:
             - APP_NAME=${APP_NAME:-Planly App}
             - APP_ENV=${APP_ENV:-production}
@@ -33,8 +30,6 @@ services:
 
     # ============================================================
     # SERVICE DEVELOPMENT: Laravel Sail
-    # Digunakan untuk development di localhost
-    # Jalankan: ./vendor/bin/sail up -d
     # ============================================================
     laravel.test:
         build:
@@ -64,7 +59,7 @@ services:
 
     # ============================================================
     # SERVICE DATABASE: MySQL
-    # Digunakan oleh kedua service di atas
+    # Menggunakan Volume dari Stack Lama (planning-monitoring)
     # ============================================================
     mysql:
         image: 'mysql:8.4'
@@ -78,7 +73,8 @@ services:
             MYSQL_PASSWORD: '${DB_PASSWORD}'
             MYSQL_ALLOW_EMPTY_PASSWORD: 1
         volumes:
-            - 'sail-mysql:/var/lib/mysql'
+            # Mengarahkan ke volume lama agar data tidak hilang
+            - planning-monitoring_sail-mysql:/var/lib/mysql
             - './vendor/laravel/sail/database/mysql/create-testing-database.sh:/docker-entrypoint-initdb.d/10-create-testing-database.sh'
         networks:
             - sail
@@ -96,5 +92,6 @@ networks:
         driver: bridge
 
 volumes:
-    sail-mysql:
-        driver: local
+    # Mendeklarasikan volume lama sebagai resource eksternal
+    planning-monitoring_sail-mysql:
+        external: true
