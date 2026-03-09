@@ -6,6 +6,7 @@ import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } fro
 import Modal from '@/Components/Modal.vue';
 import Toast from '@/Components/Toast.vue';
 import DailyReportForm from './DailyReportForm.vue';
+import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue';
 import debounce from 'lodash/debounce';
 
 defineOptions({ layout: NexusLayout });
@@ -63,6 +64,35 @@ const isExportDropdownOpen = ref(false);
 
 const selectedIds = ref([]);
 const selectAll = ref(false);
+
+const toggleSelectAll = () => {
+    if (selectAll.value) {
+        selectedIds.value = props.reports.data.map(report => report.id);
+    } else {
+        selectedIds.value = [];
+    }
+};
+
+watch(selectedIds, (newValue) => {
+    if (!props.reports?.data || props.reports.data.length === 0) {
+        selectAll.value = false;
+        return;
+    }
+    
+    if (newValue.length === 0) {
+        selectAll.value = false;
+    } else if (newValue.length === props.reports.data.length) {
+        selectAll.value = true;
+    } else {
+        selectAll.value = false;
+    }
+}, { deep: true });
+
+// Reset selection when reports data changes (e.g. pagination/filtering)
+watch(() => props.reports.data, () => {
+    selectedIds.value = [];
+    selectAll.value = false;
+}, { deep: true });
 
 // Column Visibility State
 const columns = ref([
@@ -174,32 +204,43 @@ const clearFilters = () => {
     isFilterDropdownOpen.value = false;
 };
 
+// Delete Modal State
+const isDeleteModalOpen = ref(false);
+const idToDelete = ref(null);
+const isBulkDeleteModalOpen = ref(false);
+
 const deleteReport = (id) => {
-    if (confirm('Are you sure you want to delete this report?')) {
-        router.delete(route('daily-report.destroy', id), {
-            preserveScroll: true
-        });
-    }
+    idToDelete.value = id;
+    isDeleteModalOpen.value = true;
 };
 
-const toggleSelectAll = () => {
-    if (selectAll.value) {
-        selectedIds.value = props.reports.data.map(r => r.id);
-    } else {
-        selectedIds.value = [];
+const confirmDeleteReport = () => {
+    if (idToDelete.value) {
+        router.delete(route('daily-report.destroy', idToDelete.value), {
+            preserveScroll: true,
+            onSuccess: () => {
+                isDeleteModalOpen.value = false;
+                idToDelete.value = null;
+            }
+        });
     }
 };
 
 const deleteSelected = () => {
-    if (confirm(`Are you sure you want to delete ${selectedIds.value.length} selected reports?`)) {
-        router.delete(route('daily-report.bulk-destroy'), {
-            data: { ids: selectedIds.value },
-            onSuccess: () => {
-                selectedIds.value = [];
-                selectAll.value = false;
-            }
-        });
+    if (selectedIds.value.length > 0) {
+        isBulkDeleteModalOpen.value = true;
     }
+};
+
+const confirmBulkDelete = () => {
+    router.delete(route('daily-report.bulk-destroy'), {
+        data: { ids: selectedIds.value },
+        onSuccess: () => {
+            selectedIds.value = [];
+            selectAll.value = false;
+            isBulkDeleteModalOpen.value = false;
+        }
+    });
 };
 
 const exportSelectedExcel = () => {
@@ -208,6 +249,78 @@ const exportSelectedExcel = () => {
 
 const exportSelectedPdf = () => {
     window.location.href = route('daily-report.export-pdf', { ids: selectedIds.value });
+};
+
+// Import Modal State
+const isImportModalOpen = ref(false);
+const importFile = ref(null);
+const importFileName = ref('');
+const importUserId = ref('');
+const importLoading = ref(false);
+const importErrors = ref([]);
+const dragOver = ref(false);
+
+const openImportModal = () => {
+    isImportModalOpen.value = true;
+    importFile.value = null;
+    importFileName.value = '';
+    importUserId.value = '';
+    importErrors.value = [];
+    isExportDropdownOpen.value = false;
+};
+
+const handleImportFile = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        importFile.value = file;
+        importFileName.value = file.name;
+    }
+};
+
+const handleDrop = (e) => {
+    dragOver.value = false;
+    const file = e.dataTransfer.files[0];
+    if (file && (file.name.endsWith('.xlsx') || file.name.endsWith('.xls'))) {
+        importFile.value = file;
+        importFileName.value = file.name;
+    }
+};
+
+const removeImportFile = () => {
+    importFile.value = null;
+    importFileName.value = '';
+};
+
+const submitImport = () => {
+    if (!importFile.value) return;
+    importLoading.value = true;
+    importErrors.value = [];
+
+    const formData = new FormData();
+    formData.append('file', importFile.value);
+    if (importUserId.value) {
+        formData.append('user_id', importUserId.value);
+    }
+
+    router.post(route('daily-report.import'), formData, {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: (page) => {
+            importLoading.value = false;
+            isImportModalOpen.value = false;
+            importFile.value = null;
+            importFileName.value = '';
+            if (page.props.flash?.import_errors) {
+                importErrors.value = page.props.flash.import_errors;
+            }
+        },
+        onError: (errors) => {
+            importLoading.value = false;
+            if (errors.file) {
+                importErrors.value = [errors.file];
+            }
+        }
+    });
 };
 
 const formatDate = (dateString) => {
@@ -287,6 +400,28 @@ onMounted(() => {
 onUnmounted(() => {
     document.removeEventListener('click', closeDropdowns);
 });
+
+const getActivityBadgeClass = (code) => {
+    const base = "inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider border shadow-sm ";
+    if (!code) return base + "bg-gray-100 text-gray-600 border-gray-200";
+    
+    const prefix = code.toUpperCase();
+    
+    if (prefix.startsWith('V')) return base + "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200";
+    if (prefix.startsWith('OM')) return base + "bg-rose-50 text-rose-700 border-rose-200";
+    if (prefix.startsWith('E')) return base + "bg-amber-50 text-amber-700 border-amber-200";
+    if (prefix.startsWith('CL')) return base + "bg-gray-900 text-white border-gray-800";
+    if (prefix.startsWith('C')) return base + "bg-emerald-50 text-emerald-700 border-emerald-200";
+    if (prefix.startsWith('S')) return base + "bg-violet-50 text-violet-700 border-violet-200";
+    if (prefix.startsWith('AT')) return base + "bg-cyan-50 text-cyan-700 border-cyan-200";
+    if (prefix.startsWith('PP')) return base + "bg-orange-50 text-orange-700 border-orange-200";
+    if (prefix.startsWith('PR')) return base + "bg-sky-50 text-sky-700 border-sky-200";
+    if (prefix.startsWith('N')) return base + "bg-pink-50 text-pink-700 border-pink-200";
+    if (prefix.startsWith('EM')) return base + "bg-rose-50 text-rose-700 border-rose-200";
+    if (prefix.startsWith('O')) return base + "bg-indigo-50 text-indigo-700 border-indigo-200";
+
+    return base + "bg-gray-100 text-gray-600 border-gray-200";
+};
 </script>
 
 <template>
@@ -451,6 +586,14 @@ onUnmounted(() => {
                                         <svg class="h-5 w-5 text-rose-500" viewBox="0 0 24 24" fill="currentColor"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8" fill="none" stroke="white" stroke-width="1.5"/><text x="8" y="17" fill="white" font-size="6" font-weight="bold">PDF</text></svg>
                                         Export PDF
                                     </a>
+                                    <hr class="my-1 border-gray-100">
+                                    <button @click="openImportModal"
+                                        class="flex items-center gap-x-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors w-full text-left">
+                                        <svg class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                        </svg>
+                                        Import Excel
+                                    </button>
                                 </div>
                             </div>
 
@@ -576,7 +719,7 @@ onUnmounted(() => {
                             </td>
                             <!-- Activity Code -->
                             <td v-if="columns.find(c => c.key === 'activity_code').visible" class="px-4 py-3">
-                                <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-gray-100 text-gray-600 uppercase tracking-wider border border-gray-200 shadow-sm">
+                                <span :class="getActivityBadgeClass(report.activity_code || report.activity_type)">
                                     {{ report.activity_code || report.activity_type }}
                                 </span>
                             </td>
@@ -621,17 +764,17 @@ onUnmounted(() => {
                              <td v-if="columns.find(c => c.key === 'status').visible" class="px-4 py-3">
                                  <div class="flex justify-center">
                                      <span v-if="report.is_success"
-                                         class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 shadow-sm text-[10px] font-bold tracking-wider"
+                                         class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm text-[10px] font-bold tracking-wide uppercase"
                                      >
-                                         <svg class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="4">
+                                         <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                                              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                                          </svg>
                                          Success
                                      </span>
                                      <span v-else
-                                         class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-100 shadow-sm text-[10px] font-bold tracking-wider"
+                                         class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md bg-rose-100 text-rose-800 border border-rose-200 shadow-sm text-[10px] font-bold tracking-wide uppercase"
                                      >
-                                         <svg class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="4">
+                                         <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                                              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                          </svg>
                                          Failed
@@ -710,15 +853,15 @@ onUnmounted(() => {
                             </div>
                             <div class="flex items-center gap-1.5 flex-shrink-0">
                                 <span
-                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wider shadow-sm border"
+                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wide shadow-sm border uppercase"
                                     :class="report.is_success
-                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                        : 'bg-rose-50 text-rose-700 border-rose-200'"
+                                        ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                                        : 'bg-rose-100 text-rose-800 border-rose-200'"
                                 >
-                                    <svg v-if="report.is_success" class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="4">
+                                    <svg v-if="report.is_success" class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                                     </svg>
-                                    <svg v-else class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="4">
+                                    <svg v-else class="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                     {{ report.is_success ? 'Success' : 'Failed' }}
@@ -731,7 +874,7 @@ onUnmounted(() => {
                             <div class="flex flex-col gap-1">
                                 <span class="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Activity Code</span>
                                 <div class="flex">
-                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-gray-50 text-gray-600 border border-gray-200 shadow-sm tracking-widest">
+                                    <span :class="getActivityBadgeClass(report.activity_code || report.activity_type)">
                                         {{ report.activity_code || report.activity_type }}
                                     </span>
                                 </div>
@@ -832,7 +975,6 @@ onUnmounted(() => {
             </div>
         </div>
     </div>
-
     <!-- Detail Modal (Matched with Planning style) -->
     <TransitionRoot appear :show="isDetailModalOpen" as="template">
         <Dialog as="div" @close="closeDetail" class="relative z-50">
@@ -898,11 +1040,11 @@ onUnmounted(() => {
                                                     </div>
                                                     <span class="text-[10px] sm:text-xs text-gray-600 font-medium">{{ selectedReport.user?.name }}</span>
                                                 </div>
-                                                
-                                                <span 
+
+                                                <span
                                                     class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border shadow-sm transition-all"
-                                                    :class="selectedReport.is_success 
-                                                        ? 'bg-emerald-100 text-emerald-700 border-emerald-200 ring-1 ring-emerald-50' 
+                                                    :class="selectedReport.is_success
+                                                        ? 'bg-emerald-100 text-emerald-700 border-emerald-200 ring-1 ring-emerald-50'
                                                         : 'bg-rose-100 text-rose-700 border-rose-200 ring-1 ring-rose-50'"
                                                 >
                                                     {{ selectedReport.is_success ? 'Success' : 'Failed' }}
@@ -1036,6 +1178,156 @@ onUnmounted(() => {
         :auth="auth"
         @close="closeFormModal"
     />
+
+    <!-- Single Delete Confirmation Modal -->
+    <ConfirmDeleteModal
+        :show="isDeleteModalOpen"
+        title="Delete Daily Activity"
+        content="Are you sure you want to delete this activity report? This action cannot be undone."
+        @close="isDeleteModalOpen = false"
+        @confirm="confirmDeleteReport"
+    />
+
+    <!-- Bulk Delete Confirmation Modal -->
+    <ConfirmDeleteModal
+        :show="isBulkDeleteModalOpen"
+        title="Delete Selected Activities"
+        :content="`Are you sure you want to delete ${selectedIds.length} selected activity reports? This action cannot be undone.`"
+        @close="isBulkDeleteModalOpen = false"
+        @confirm="confirmBulkDelete"
+    />
+
+    <!-- Import Modal -->
+    <Modal :show="isImportModalOpen" @close="isImportModalOpen = false" maxWidth="lg">
+        <div class="font-sans">
+            <!-- Header -->
+            <div class="px-5 py-4 bg-blue-600 flex items-center justify-between rounded-t-xl">
+                <div>
+                    <h3 class="text-base font-bold text-white">Import Daily Activities</h3>
+                    <p class="text-blue-200 text-xs mt-0.5">Upload Excel file to import activities in bulk</p>
+                </div>
+                <button @click="isImportModalOpen = false" class="text-blue-200 hover:text-white transition-colors">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-5 space-y-5">
+                <!-- Template Download -->
+                <div class="flex items-center gap-3 p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                    <div class="h-10 w-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-bold text-blue-800">Download Template</p>
+                        <p class="text-xs text-blue-600">Use the template to format your data correctly</p>
+                    </div>
+                    <a :href="route('daily-report.import-template')" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors shadow-sm">
+                        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                        </svg>
+                        .xlsx
+                    </a>
+                </div>
+
+                <!-- User Selector (Super Admin only) -->
+                <div v-if="isSuperAdmin" class="space-y-1.5">
+                    <label class="block text-xs font-bold text-gray-700">Import For User <span class="text-gray-400 font-normal">(optional)</span></label>
+                    <select v-model="importUserId" class="block w-full rounded-xl border-gray-200 py-2.5 text-sm text-gray-700 focus:border-blue-500 focus:ring-blue-500">
+                        <option value="">Current User ({{ auth.user.name }})</option>
+                        <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }}</option>
+                    </select>
+                </div>
+
+                <!-- Drop Zone -->
+                <div
+                    @dragover.prevent="dragOver = true"
+                    @dragleave.prevent="dragOver = false"
+                    @drop.prevent="handleDrop"
+                    :class="[
+                        'border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer',
+                        dragOver ? 'border-blue-400 bg-blue-50' : importFile ? 'border-emerald-300 bg-emerald-50' : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                    ]"
+                    @click="$refs.importFileInput.click()"
+                >
+                    <input ref="importFileInput" type="file" accept=".xlsx,.xls" @change="handleImportFile" class="hidden" />
+
+                    <!-- File Selected -->
+                    <div v-if="importFile" class="flex flex-col items-center gap-2">
+                        <div class="h-12 w-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                            <svg class="h-6 w-6 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-900">{{ importFileName }}</p>
+                            <p class="text-xs text-gray-500">{{ (importFile.size / 1024).toFixed(1) }} KB</p>
+                        </div>
+                        <button @click.stop="removeImportFile" class="text-xs text-rose-500 hover:text-rose-700 font-bold">
+                            Remove file
+                        </button>
+                    </div>
+
+                    <!-- No File -->
+                    <div v-else class="flex flex-col items-center gap-2">
+                        <div class="h-12 w-12 bg-gray-100 rounded-xl flex items-center justify-center">
+                            <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm font-bold text-gray-700">Drop your Excel file here or <span class="text-blue-600">browse</span></p>
+                            <p class="text-xs text-gray-400 mt-1">Only .xlsx and .xls files (max 5MB)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Import Errors -->
+                <div v-if="importErrors.length > 0" class="p-3 bg-rose-50 border border-rose-200 rounded-xl">
+                    <p class="text-xs font-bold text-rose-700 mb-2 flex items-center gap-1.5">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" />
+                        </svg>
+                        Import Warnings
+                    </p>
+                    <ul class="space-y-1">
+                        <li v-for="(error, i) in importErrors" :key="i" class="text-xs text-rose-600">{{ error }}</li>
+                    </ul>
+                </div>
+
+                <!-- Info -->
+                <div class="text-xs text-gray-400 space-y-1">
+                    <p><strong>Required columns:</strong> report_date, company_name, activity_type, description, location, pic, position, result_description, progress, is_success</p>
+                    <p><strong>Optional columns:</strong> product, next_plan</p>
+                    <p><strong>Note:</strong> Company name must match existing customer in the system.</p>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-5 py-4 bg-gray-50 flex items-center justify-end gap-3 rounded-b-xl border-t border-gray-100">
+                <button @click="isImportModalOpen = false" class="px-4 py-2 text-sm font-bold text-gray-600 hover:text-gray-800 transition-colors">
+                    Cancel
+                </button>
+                <button
+                    @click="submitImport"
+                    :disabled="!importFile || importLoading"
+                    class="inline-flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition-all shadow-sm"
+                >
+                    <svg v-if="importLoading" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <svg v-else class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                    </svg>
+                    {{ importLoading ? 'Importing...' : 'Import Data' }}
+                </button>
+            </div>
+        </div>
+    </Modal>
 
     <!-- Toast Notifications -->
     <Toast

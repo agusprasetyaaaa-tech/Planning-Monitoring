@@ -473,7 +473,7 @@ class PlanningController extends Controller
             'timeSettings' => $timeSettings,
             'currentSimulatedTime' => TimeSetting::testingNow()->toISOString(),
             'reminderData' => $reminderData,
-            'filters' => array_merge($request->only(['search', 'team', 'user', 'sort', 'direction', 'perPage', 'month', 'year']), ['tab' => $currentTab]),
+            'filters' => array_merge($request->only(['search', 'team', 'user', 'sort', 'direction', 'perPage', 'month', 'year', 'view']), ['tab' => $currentTab]),
             'teams' => Team::select('id', 'name', 'manager_id')
                 ->with('manager:id,name')
                 ->when($user->hasRole('Manager') && !$user->hasRole(['Super Admin', 'Board of Director']), function ($q) use ($user) {
@@ -510,6 +510,23 @@ class PlanningController extends Controller
                         || (!empty($user->managed_team_id));
                     return $user;
                 }),
+            'products' => \App\Models\Product::select('id', 'name')->orderBy('name')->get(),
+            'allCustomers' => Customer::where(function ($q) use ($user) {
+                if ($user->hasRole(['Super Admin', 'Board of Director'])) {
+                    // No restriction
+                } elseif ($user->hasRole('Manager')) {
+                    // Manager can see their own customers OR customers belonging to their team members
+                    $q->where('marketing_sales_id', $user->id)
+                        ->orWhereIn('marketing_sales_id', function ($query) use ($user) {
+                        $query->select('id')
+                            ->from('users')
+                            ->where('team_id', $user->team_id);
+                    });
+                } else {
+                    // User / Supervisor only sees their own
+                    $q->where('marketing_sales_id', $user->id);
+                }
+            })->select('id', 'company_name', 'product_id')->orderBy('company_name')->get(),
         ]);
     }
 
@@ -647,10 +664,10 @@ class PlanningController extends Controller
 
         // ESCALATION plans should redirect to 'All Planning' tab since they don't appear in week tabs
         if ($request->activity_type === 'ESCALATION') {
-            return redirect()->route('planning.index', ['tab' => 'all'])->with('success', $successMessage);
+            return back()->with('success', $successMessage);
         }
 
-        return redirect()->route('planning.index')->with('success', $successMessage);
+        return back()->with('success', $successMessage);
     }
 
     public function createReport(Plan $plan)
@@ -689,14 +706,32 @@ class PlanningController extends Controller
 
         $request->validate($rules);
 
-        $plan->report()->create($request->all());
+        $data = $request->all();
+        // Defensive formatting: Ensure dates are in Y-m-d format for MySQL date columns
+        if (isset($data['execution_date'])) {
+            try {
+                $data['execution_date'] = \Carbon\Carbon::parse($data['execution_date'])->toDateString();
+            } catch (\Exception $e) { /* Fallback to raw if parsing fails */
+            }
+        }
+        if (isset($data['next_planning_date'])) {
+            try {
+                $data['next_planning_date'] = \Carbon\Carbon::parse($data['next_planning_date'])->toDateString();
+            } catch (\Exception $e) { /* Fallback to raw if parsing fails */
+            }
+        }
 
-        // Update plan status to reported AND set approval statuses to pending
-        // Use simulated time for updated_at to ensure correct inactivity calculation
+        $plan->report()->create($data);
+
+        $user = Auth::user();
+        $isManager = $user->hasRole('Manager');
+
+        // Update plan status to reported AND set approval statuses 
+        // If user is manager, auto-approve the manager_status
         $plan->update([
             'status' => 'reported',
-            'manager_status' => 'pending', // Manager needs to approve this report
-            'bod_status' => 'pending',     // BOD needs to review after manager approval
+            'manager_status' => $isManager ? 'approved' : 'pending',
+            'bod_status' => 'pending',
             'updated_at' => TimeSetting::testingNow(), // Use simulated time for accurate tracking
         ]);
 
@@ -722,11 +757,11 @@ class PlanningController extends Controller
                 'bod_status' => null,     // Will be set to pending when report is submitted
             ]);
 
-            return redirect()->route('planning.index')->with('success', 'Report created and Next Plan automatically generated.');
+            return back()->with('success', 'Report created and Next Plan automatically generated.');
         }
 
         // For closing deals, just return success without creating next plan
-        return redirect()->route('planning.index')->with('success', 'Report submitted. Deal marked for closing - awaiting approval.');
+        return back()->with('success', 'Report submitted. Deal marked for closing - awaiting approval.');
     }
 
     /**
@@ -781,8 +816,8 @@ class PlanningController extends Controller
             return back()->with('info', 'Status unchanged.');
         }
 
-        // Check rate limit (Super Admin bypasses this)
-        if (!$isSuperAdmin) {
+        // Check rate limit (Super Admin & Manager bypass these workflow locks)
+        if (!$isSuperAdmin && !$user->hasRole('Manager')) {
             // Lock Check
             if (!$plan->canManagerChange($user)) {
                 return back()->with('error', 'Cannot update status: Plan is locked (BOD finalized or grace period expired).');
@@ -1007,6 +1042,10 @@ class PlanningController extends Controller
      */
     public function revise(Request $request, Plan $plan)
     {
+        // 0. Clean up any existing legacy orphaned next plans before processing revision
+        // This ensures old failed attempts are gone, but doesn't delete the one we're about to create.
+        $this->checkAndDeleteNextPlan($plan);
+
         // Check if this is a closing deal (100%-Closing)
         $isClosing = $request->progress === '100%-Closing';
 
@@ -1060,16 +1099,15 @@ class PlanningController extends Controller
             if ($request->boolean('has_report')) {
                 // Update or Create Report
                 $reportData = [
-                    'execution_date' => $request->execution_date,
+                    'execution_date' => \Carbon\Carbon::parse($request->execution_date)->toDateString(),
                     'result_description' => $request->result_description,
                     'location' => $request->location,
                     'pic' => $request->pic,
                     'position' => $request->position,
                     'progress' => $request->progress,
                     'is_success' => $request->boolean('is_success'),
-                    'is_late' => Carbon::parse($request->execution_date)->gt($plan->planning_date),
                     'next_plan_description' => $request->next_plan_description,
-                    'next_plan_date' => $request->next_planning_date,
+                    'next_planning_date' => $request->next_planning_date ? \Carbon\Carbon::parse($request->next_planning_date)->toDateString() : null,
                     'next_activity_type' => $request->next_activity_type,
                 ];
 
@@ -1095,10 +1133,16 @@ class PlanningController extends Controller
                 }
 
                 // Update Plan status to reported
-                $plan->update(['status' => 'reported']);
+                $user = Auth::user();
+                $isManager = $user->hasRole('Manager');
+
+                $plan->update([
+                    'status' => 'reported',
+                    'manager_status' => $isManager ? 'approved' : 'pending',
+                ]);
 
             } else {
-                // User decided to REVISE PL AN ONLY (No Report)
+                // User decided to REVISE PLAN ONLY (No Report)
                 // We must PRESERVE the Old Plan (Rejected/Failed) in History.
                 // So instead of Updating, we CREATE NEW PLAN (Clone with updates).
 
@@ -1149,9 +1193,6 @@ class PlanningController extends Controller
                 'created_at' => TimeSetting::testingNow(),
             ]);
         });
-
-        // Ensure legacy orphaned next plans are removed when user revises
-        $this->checkAndDeleteNextPlan($plan);
 
         return back()->with('success', 'Revision submitted successfully. New Plan created.');
     }

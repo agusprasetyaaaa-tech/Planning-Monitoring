@@ -11,6 +11,8 @@ import DangerButton from '@/Components/DangerButton.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import axios from 'axios';
 import NexusCalendar from '@/Components/NexusCalendar.vue';
+import PlanningForm from './PlanningForm.vue';
+import PlanningReportForm from './PlanningReportForm.vue';
 
 
 const page = usePage();
@@ -24,6 +26,44 @@ const openDetail = (customer) => {
     isDetailOpen.value = true;
 };
 
+// --- PLANNING MODAL LOGIC ---
+const showPlanningModal = ref(false);
+const selectedPlanningCustomer = ref(null);
+const selectedPlanningDate = ref('');
+
+const openPlanningModal = (customer = null, date = '') => {
+    selectedPlanningCustomer.value = customer;
+    selectedPlanningDate.value = date;
+    showPlanningModal.value = true;
+};
+
+const closePlanningModal = () => {
+    showPlanningModal.value = false;
+    setTimeout(() => {
+        selectedPlanningCustomer.value = null;
+        selectedPlanningDate.value = '';
+    }, 200);
+};
+
+// --- REPORT MODAL LOGIC ---
+const showReportModal = ref(false);
+const selectedReportPlan = ref(null);
+const selectedReportCompanyName = ref('');
+
+const openReportModal = (plan, companyName = '') => {
+    selectedReportPlan.value = plan;
+    selectedReportCompanyName.value = companyName;
+    showReportModal.value = true;
+};
+
+const closeReportModal = () => {
+    showReportModal.value = false;
+    setTimeout(() => {
+        selectedReportPlan.value = null;
+        selectedReportCompanyName.value = '';
+    }, 200);
+};
+
 const closeDetail = () => {
     isDetailOpen.value = false;
     setTimeout(() => {
@@ -34,8 +74,8 @@ const closeDetail = () => {
 
 
 const activityTypes = [
-    'Call', 'Visit', 'Ent', 'Online Meeting', 'Email', 'Survey', 
-    'Presentation', 'Proposal', 'Negotiation', 'Admin/Tender', 'Closing', 'Other'
+    'Call', 'Visit', 'Ent', 'Online Meeting', 'Survey', 
+    'Presentation', 'Proposal', 'Negotiation', 'Admin/Tender', 'Other'
 ];
 
 const progressOptions = [
@@ -140,6 +180,8 @@ const props = defineProps({
     filters: Object,
     teams: Array,
     users: Array,
+    products: Array,
+    allCustomers: Array,
 });
 
 const handleMonthChange = ({ month, year }) => {
@@ -156,7 +198,7 @@ const currentTabValue = props.filters?.tab || 'all';
 const perPage = ref(currentTabValue === 'all' ? 'all' : (props.filters?.perPage || '10'));
 
 // View Mode (Table/Calendar)
-const viewMode = ref('table');
+const viewMode = ref(props.filters?.view || 'table');
 const switchViewMode = (mode) => {
     viewMode.value = mode;
     
@@ -169,10 +211,13 @@ const switchViewMode = (mode) => {
             ...props.filters,
             tab: undefined,
             perPage: 10,
+            view: mode,
         }, {
             preserveState: false,
             replace: true
         });
+    } else {
+        updateParams();
     }
 };
 
@@ -244,6 +289,7 @@ const updateParams = debounce(() => {
         month: selectedMonth.value,
         year: selectedYear.value,
         tab: currentTab.value, // Use currentTab.value as source of truth, not props which might be stale
+        view: viewMode.value,
         page: 1, // Reset to first page when filters change
     }, { 
         preserveState: true, 
@@ -1046,7 +1092,7 @@ const canToggleManagerAction = (plan, targetAction, customer = null) => {
     if (!plan) {
         return targetAction === 'escalated';
     }
-    if (props.user_roles && props.user_roles.includes('Super Admin')) return true;
+    if (props.user_roles && (props.user_roles.includes('Super Admin') || props.user_roles.includes('Manager'))) return true;
     
     // Get Planning status for restrictions
     if (customer) {
@@ -1286,6 +1332,7 @@ const changeTab = (tabId) => {
     router.get(route('planning.index'), {
         ...otherFilters,  // Spread other filters (search, team, user, etc) WITHOUT tab
         tab: tabId,       // Use NEW tab value
+        view: viewMode.value, // Persist view mode
         perPage: newPerPage,
         page: 1 // Reset pagination
     }, {
@@ -1520,29 +1567,30 @@ const getMonitoringStatusCode = (status) => {
 };
 
 // --- Revision Date Logic (14 Days Offset) ---
-const todayStr = new Date().toISOString().split('T')[0];
+const todayStr = props.currentSimulatedTime 
+    ? props.currentSimulatedTime.split('T')[0] 
+    : new Date().toISOString().split('T')[0];
 
 const revisionMaxPlanningDate = computed(() => {
     const d = new Date();
-    d.setDate(d.getDate() + 14);
+    d.setDate(d.getDate() + 365); // Far future (1 year)
     return d.toISOString().split('T')[0];
 });
 
 const revisionMinPlanningDate = computed(() => {
-    if (revisionPlan.value && revisionPlan.value.planning_date) {
-        // Return original planning date (or YYYY-MM-DD part)
-        return revisionPlan.value.planning_date.split('T')[0];
-    }
-    return todayStr;
+    return todayStr; // No rollback - must be today or later
 });
 
 const revisionMaxExecutionDate = computed(() => todayStr);
 
-const revisionMinNextPlanDate = computed(() => revisionForm.execution_date || todayStr);
+const revisionMinNextPlanDate = computed(() => {
+    const base = revisionForm.execution_date || todayStr;
+    return base > todayStr ? base : todayStr;
+});
 
 const revisionMaxNextPlanDate = computed(() => {
     const base = revisionForm.execution_date ? new Date(revisionForm.execution_date) : new Date();
-    base.setDate(base.getDate() + 14);
+    base.setDate(base.getDate() + 365); // Far future (1 year)
     return base.toISOString().split('T')[0];
 });
 
@@ -1575,7 +1623,7 @@ const formatDate = (dateStr) => {
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
                     <span>Back</span>
                 </Link>
-                <h1 class="text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight">Planning</h1>
+                <h1 class="text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight">Planning Activity</h1>
             </div>
         </div>
 
@@ -1695,12 +1743,12 @@ const formatDate = (dateStr) => {
 
                             <!-- Create Button -->
                             <div v-if="showCreateButton">
-                                <Link v-if="canCreatePlanToday" :href="route('planning.create')" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 hover:shadow-md active:scale-[0.98] transition-all">
+                                <button v-if="canCreatePlanToday" @click="openPlanningModal()" class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 hover:shadow-md active:scale-[0.98] transition-all">
                                     <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                         <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
                                     </svg>
                                     Create Plan
-                                </Link>
+                                </button>
                                 <div v-else class="inline-flex items-center gap-2 rounded-lg bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-500 cursor-not-allowed" title="Planning can only be created on Friday">
                                     <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">\
                                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
@@ -1981,24 +2029,24 @@ const formatDate = (dateStr) => {
                              </button>
 
                              <!-- Late Report (Warning/Expired) -->
-                            <Link v-else-if="customer.latest_plan && (getPlanningStatus(customer) === 'warning' || getPlanningStatus(customer) === 'expired' || getPlanningStatus(customer) === 'expired_warning') && canCreateContent(customer) && customer.latest_plan.activity_type !== 'ESCALATION' && customer.latest_plan.status === 'created'" 
-                                  :href="route('planning.report.create', customer.latest_plan.id)"
+                            <button v-else-if="customer.latest_plan && (getPlanningStatus(customer) === 'warning' || getPlanningStatus(customer) === 'expired' || getPlanningStatus(customer) === 'expired_warning') && canCreateContent(customer) && customer.latest_plan.activity_type !== 'ESCALATION' && customer.latest_plan.status === 'created'" 
+                                  @click="openReportModal(customer.latest_plan, customer.company_name)"
                                   class="w-full flex justify-center items-center gap-2 text-center text-sm font-bold text-white bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] py-3.5 rounded-xl shadow-lg shadow-amber-200/50 ring-1 ring-amber-500/20 transition-all">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 opacity-90">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                 </svg>
                                 Late Report
-                            </Link>
+                            </button>
 
                              <!-- Create Report (Fresh plan) -->
-                            <Link v-else-if="customer.latest_plan && getPlanningStatus(customer) === 'created' && canCreateContent(customer) && customer.latest_plan.activity_type !== 'ESCALATION'" 
-                                  :href="route('planning.report.create', customer.latest_plan.id)"
+                            <button v-else-if="customer.latest_plan && getPlanningStatus(customer) === 'created' && canCreateContent(customer) && customer.latest_plan.activity_type !== 'ESCALATION'" 
+                                  @click="openReportModal(customer.latest_plan, customer.company_name)"
                                   class="w-full flex justify-center items-center gap-2 text-center text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 active:scale-[0.98] py-3.5 rounded-xl shadow-lg shadow-blue-200/50 ring-1 ring-blue-500/20 transition-all">
                                 <svg class="w-5 h-5 opacity-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
                                 Create Report
-                            </Link>
+                            </button>
 
                             <!-- Wait Day Restriction (Mobile) -->
                             <div v-else-if="(['none', 'no_plan_warning', 'reported', 'warning', 'failed_history', 'approved'].includes(getPlanningStatus(customer)) || customer.latest_plan?.activity_type === 'ESCALATION') && canCreateContent(customer) && (!canCreatePlanToday && !timeSettings?.testing_mode)"
@@ -2006,25 +2054,25 @@ const formatDate = (dateStr) => {
                                 wait {{ getAllowedDaysText() }}
                             </div>
 
-                            <!-- New Opportunity (Closed Deal - Mobile) -->
-                            <Link v-else-if="getPlanningStatus(customer) === 'closed' && canCreateContent(customer)"
-                                  :href="route('planning.create', { customer: customer.id })"
+                             <!-- New Opportunity (Closed Deal - Mobile) -->
+                            <button v-else-if="getPlanningStatus(customer) === 'closed' && canCreateContent(customer)"
+                                  @click="openPlanningModal(customer)"
                                   class="w-full flex justify-center items-center gap-2 text-center text-sm font-bold text-white bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 active:scale-[0.98] py-3.5 rounded-xl shadow-lg shadow-gray-300/50 ring-1 ring-gray-600/20 transition-all">
                                 <svg class="w-5 h-5 opacity-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                 </svg>
                                 New Opportunity
-                            </Link>
+                            </button>
 
-                            <!-- Create Plan - Include approved, and manually failed expired plans (Exclude Rejected) -->
-                            <Link v-else-if="(['none', 'no_plan_warning'].includes(getPlanningStatus(customer)) || customer.latest_plan?.activity_type === 'ESCALATION' || (customer.latest_plan?.lifecycle_status === 'failed' && customer.latest_plan?.status === 'created')) && canCreateContent(customer)"
-                                  :href="route('planning.create', { customer: customer.id })"
+                             <!-- Create Plan - Include approved, and manually failed expired plans (Exclude Rejected) -->
+                            <button v-else-if="(['none', 'no_plan_warning'].includes(getPlanningStatus(customer)) || customer.latest_plan?.activity_type === 'ESCALATION' || (customer.latest_plan?.lifecycle_status === 'failed' && customer.latest_plan?.status === 'created')) && canCreateContent(customer)"
+                                  @click="openPlanningModal(customer)"
                                   class="w-full flex justify-center items-center gap-2 text-center text-sm font-bold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 active:scale-[0.98] py-3.5 rounded-xl shadow-lg shadow-emerald-200/50 ring-1 ring-emerald-500/20 transition-all">
-                                <svg class="w-5 h-5 opacity-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg class="h-5 w-5 opacity-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                                 </svg>
                                 Create Plan
-                            </Link>
+                            </button>
                             
                             <!-- No Action (Hide for BOD) -->
                              <div v-else-if="!canEditMonitoring" class="w-full py-3.5 rounded-xl border border-gray-100 bg-gray-50/50 text-center text-xs font-bold text-gray-400 uppercase tracking-wide">
@@ -2397,14 +2445,14 @@ const formatDate = (dateStr) => {
                                     <template v-if="customer.latest_plan && canCreateContent(customer)">
                                         <!-- 1. WARNING / EXPIRED -> LATE REPORT -->
                                         <!-- Allow user to submit a late report for plans that have passed warning threshold -->
-                                        <Link v-if="(getPlanningStatus(customer) === 'warning' || getPlanningStatus(customer) === 'expired' || getPlanningStatus(customer) === 'expired_warning') && customer.latest_plan.activity_type !== 'ESCALATION' && customer.latest_plan.status === 'created'" 
-                                            :href="route('planning.report.create', customer.latest_plan.id)"
+                                        <button v-if="(getPlanningStatus(customer) === 'warning' || getPlanningStatus(customer) === 'expired' || getPlanningStatus(customer) === 'expired_warning') && customer.latest_plan.activity_type !== 'ESCALATION' && customer.latest_plan.status === 'created'" 
+                                            @click="openReportModal(customer.latest_plan, customer.company_name)"
                                             class="w-32 justify-center text-xs font-semibold text-white bg-amber-500 hover:bg-amber-600 hover:shadow-md px-3 py-1.5 rounded-lg shadow-sm transition-all whitespace-nowrap flex items-center gap-1.5 mx-auto">
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                             </svg>
                                             Late Report
-                                        </Link>
+                                        </button>
 
                                         <!-- 2. CREATED / WARNING -> CREATE REPORT -->
                                         <!-- Include 'warning' here so they can report instead of being forced to create new plan -->
@@ -2428,14 +2476,14 @@ const formatDate = (dateStr) => {
                                         </div>
 
                                         <!-- Otherwise, if 'created' and date reached, Allow Report -->
-                                        <Link v-else-if="getPlanningStatus(customer) === 'created' && customer.latest_plan.activity_type !== 'ESCALATION'" 
-                                            :href="route('planning.report.create', customer.latest_plan.id)"
+                                        <button v-else-if="getPlanningStatus(customer) === 'created' && customer.latest_plan.activity_type !== 'ESCALATION'" 
+                                            @click="openReportModal(customer.latest_plan, customer.company_name)"
                                             class="w-32 justify-center text-xs font-semibold text-white bg-blue-500 hover:bg-blue-600 hover:shadow-md px-3 py-1.5 rounded-lg shadow-sm transition-all whitespace-nowrap flex items-center gap-1.5">
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                                             </svg>
                                             Create Report
-                                        </Link>
+                                        </button>
                                         <!-- 3. REVISE PLAN (Manager/BOD Rejected) -->
                                         <button v-else-if="(customer.latest_plan.manager_status === 'rejected' || customer.latest_plan.bod_status === 'failed')"
                                             @click="openRevisionModal(customer.latest_plan)"
@@ -2447,14 +2495,14 @@ const formatDate = (dateStr) => {
                                         </button>
                                         
                                         <!-- 4. NEW OPPORTUNITY (Closed Deal) -->
-                                        <Link v-else-if="getPlanningStatus(customer) === 'closed'"
-                                            :href="route('planning.create', { customer: customer.id })"
+                                        <button v-else-if="getPlanningStatus(customer) === 'closed'"
+                                            @click="openPlanningModal(customer)"
                                             class="w-32 justify-center text-xs font-bold text-white bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-600 hover:to-gray-700 hover:shadow-md px-3 py-1.5 rounded-lg shadow-sm transition-all whitespace-nowrap flex items-center gap-1.5">
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                             </svg>
                                             New Opportunity
-                                        </Link>
+                                        </button>
                                     </template>
 
                                     <!-- Create Plan Logic (None, Warning, Manually Failed Expired, No Plan Warning) -->
@@ -2488,14 +2536,14 @@ const formatDate = (dateStr) => {
                                         </div>
 
                                         <!-- ALLOW: Create Plan -->
-                                        <Link v-else
-                                            :href="route('planning.create', { customer: customer.id })"
+                                        <button v-else
+                                            @click="openPlanningModal(customer)"
                                             class="w-32 justify-center text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 hover:shadow-md px-3 py-1.5 rounded-lg shadow-sm transition-all whitespace-nowrap flex items-center gap-1.5">
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-3">
                                                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                                             </svg>
                                             Create Plan
-                                        </Link>
+                                        </button>
                                     </template>
                                 </div>
                             </td>
@@ -2550,7 +2598,7 @@ const formatDate = (dateStr) => {
                     :getBlinkStyle="getBlinkStyle"
                     @open-detail="openDetail"
                     @change-month="handleMonthChange"
-                    @create-plan="(date) => router.get(route('planning.create'), { customer: selectedCustomer?.id, date })"
+                    @create-plan="(date) => openPlanningModal(null, date)"
                 />
             </div>
         </div>
@@ -3179,43 +3227,40 @@ const formatDate = (dateStr) => {
 
     <!-- Revision Modal -->
     <Modal :show="showRevisionModal" @close="closeRevisionModal" max-width="2xl" :noPadding="true">
-        <div class="bg-white px-6 py-4 flex justify-between items-center border-b border-gray-100">
-             <h3 class="text-lg font-bold text-gray-900 flex items-center gap-2">
-                 <span class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                 </span>
-                 Revise Plan
-             </h3>
-             <button @click="closeRevisionModal" class="text-gray-400 hover:text-gray-500">
-                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+        <div class="px-4 py-4 sm:px-5 sm:py-4 bg-emerald-600 flex items-center justify-between rounded-t-lg">
+             <div class="pr-8 sm:pr-0">
+                <h2 class="text-base sm:text-lg font-bold text-white leading-tight">Revise Plan</h2>
+                <p class="text-[9px] sm:text-xs text-emerald-100 italic" v-if="revisionPlan">
+                    For: {{ selectedCustomer?.company_name }} | {{ revisionPlan.project_name || 'No Project' }}
+                </p>
+             </div>
+             <button @click="closeRevisionModal" class="p-2 -mr-2 text-emerald-100 hover:text-white transition-colors rounded-full hover:bg-emerald-500/50">
+                 <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                  </svg>
              </button>
         </div>
 
-        <div class="p-4 sm:p-6 overflow-y-auto max-h-[80vh] bg-white">
-            <form @submit.prevent="submitRevision" class="space-y-8">
+        <div class="p-4 sm:p-5 overflow-y-auto max-h-[85vh] bg-white">
+            <form @submit.prevent="submitRevision" class="space-y-6 sm:space-y-8">
                 
                 <!-- 1. ORIGINAL PLAN -->
-                <div class="bg-white p-4 sm:p-6 rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden">
-                    <div class="absolute top-0 left-0 w-1.5 h-full bg-amber-400"></div>
-                    <h3 class="text-base font-bold text-gray-900 mb-6 flex items-center gap-2 pl-2">
-                        Original Plan Details
+                <div class="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden">
+                    <h3 class="text-base font-bold text-gray-900 mb-6 flex items-center gap-2">
+                        Planning Details
                     </h3>
                     
                     <div class="space-y-5">
                          <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <!-- Date -->
                             <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-2">Planning Date</label>
+                                <label class="block text-xs font-bold text-gray-900 mb-2">Planning Date</label>
                                 <input v-model="revisionForm.planning_date" type="date" :min="revisionMinPlanningDate" :max="revisionMaxPlanningDate" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all text-sm shadow-sm font-medium text-gray-600">
                                 <p v-if="revisionForm.errors.planning_date" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.planning_date }}</p>
                             </div>
                             <!-- Activity Type (New) -->
                             <div>
-                                <label class="block text-sm font-bold text-gray-700 mb-2">Activity Type</label>
+                                <label class="block text-xs font-bold text-gray-900 mb-2">Activity Type</label>
                                 <select v-model="revisionForm.activity_type" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all text-sm bg-white shadow-sm cursor-pointer font-medium text-gray-600">
                                      <option value="" disabled>Select Activity</option>
                                      <option v-for="type in activityTypes" :key="type" :value="type">{{ type }}</option>
@@ -3225,7 +3270,7 @@ const formatDate = (dateStr) => {
                          </div>
                         <!-- Desc -->
                          <div>
-                            <label class="block text-sm font-bold text-gray-700 mb-2">Description</label>
+                            <label class="block text-xs font-bold text-gray-900 mb-2">Description</label>
                             <textarea v-model="revisionForm.description" rows="3" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all text-sm resize-none shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="Enter plan description..."></textarea>
                             <p v-if="revisionForm.errors.description" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.description }}</p>
                         </div>
@@ -3235,7 +3280,7 @@ const formatDate = (dateStr) => {
                 <!-- Toggle Report -->
                 <div>
                      <div class="flex items-center gap-4 mb-6 px-2 py-3 bg-white rounded-2xl border border-dashed border-gray-200 justify-between">
-                          <span class="text-sm font-bold text-gray-700 pl-2">Is the plan executed? (Include Report)</span>
+                          <span class="text-xs font-bold text-gray-900 pl-2">Is the plan executed? (Include Report)</span>
                           <Switch v-model="revisionForm.has_report" 
                                   :class="[revisionForm.has_report ? 'bg-emerald-500' : 'bg-gray-300', 'relative inline-flex h-7 w-12 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2']">
                               <span class="sr-only">Include Report</span>
@@ -3246,8 +3291,7 @@ const formatDate = (dateStr) => {
                     <!-- 2. REPORT SECTION -->
                     <div v-show="revisionForm.has_report" class="space-y-8">
                         <div class="bg-white p-4 sm:p-6 rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden">
-                             <div class="absolute top-0 left-0 w-1.5 h-full bg-emerald-500"></div>
-                             <h3 class="text-base font-bold text-gray-900 mb-6 flex items-center gap-2 pl-2">
+                             <h3 class="text-base font-bold text-gray-900 mb-6 flex items-center gap-2">
                                 Execution Report
                             </h3>
                              
@@ -3255,12 +3299,12 @@ const formatDate = (dateStr) => {
                                   <!-- Row 1: Execution Date & Location -->
                                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                       <div>
-                                         <label class="block text-sm font-bold text-gray-700 mb-2">Execution Date</label>
+                                         <label class="block text-xs font-bold text-gray-900 mb-2">Execution Date</label>
                                          <input v-model="revisionForm.execution_date" type="date" readonly class="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-100 text-gray-500 cursor-not-allowed focus:outline-none shadow-sm font-medium">
                                          <p v-if="revisionForm.errors.execution_date" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.execution_date }}</p>
                                       </div>
                                       <div>
-                                         <label class="block text-sm font-bold text-gray-700 mb-2">Location</label>
+                                         <label class="block text-xs font-bold text-gray-900 mb-2">Location</label>
                                          <input v-model="revisionForm.location" type="text" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="e.g. Client Office">
                                          <p v-if="revisionForm.errors.location" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.location }}</p>
                                       </div>
@@ -3269,12 +3313,12 @@ const formatDate = (dateStr) => {
                                   <!-- Row 2: PIC & Position -->
                                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                       <div>
-                                         <label class="block text-sm font-bold text-gray-700 mb-2">PIC</label>
+                                         <label class="block text-xs font-bold text-gray-900 mb-2">Person In Charge</label>
                                          <input v-model="revisionForm.pic" type="text" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="Person met">
                                          <p v-if="revisionForm.errors.pic" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.pic }}</p>
                                       </div>
                                       <div>
-                                         <label class="block text-sm font-bold text-gray-700 mb-2">Position</label>
+                                         <label class="block text-xs font-bold text-gray-900 mb-2">PIC Position</label>
                                          <input v-model="revisionForm.position" type="text" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="PIC Position">
                                          <p v-if="revisionForm.errors.position" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.position }}</p>
                                       </div>
@@ -3282,7 +3326,7 @@ const formatDate = (dateStr) => {
 
                                   <!-- Result -->
                                   <div>
-                                     <label class="block text-sm font-bold text-gray-700 mb-2">Result Description</label>
+                                     <label class="block text-xs font-bold text-gray-900 mb-2">Result Description</label>
                                      <textarea v-model="revisionForm.result_description" rows="3" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm resize-none shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="Describe the outcome..."></textarea>
                                      <p v-if="revisionForm.errors.result_description" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.result_description }}</p>
                                   </div>
@@ -3290,7 +3334,7 @@ const formatDate = (dateStr) => {
                                   <!-- Row 3: Progress & Goal Achievement -->
                                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 items-start">
                                       <div>
-                                         <label class="block text-sm font-bold text-gray-700 mb-2">Progress</label>
+                                         <label class="block text-xs font-bold text-gray-900 mb-2">Progress</label>
                                          <select v-model="revisionForm.progress" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm bg-white shadow-sm cursor-pointer font-medium text-gray-600">
                                              <option value="" disabled>Select Progress</option>
                                              <option v-for="opt in progressOptions" :key="opt" :value="opt">{{ opt }}</option>
@@ -3299,7 +3343,7 @@ const formatDate = (dateStr) => {
                                       </div>
                                       
                                       <div>
-                                          <label class="block text-sm font-bold text-gray-700 mb-2">Goal Achievement?</label>
+                                          <label class="block text-xs font-bold text-gray-900 mb-2">Goal Achievement?</label>
                                           <Switch v-model="revisionForm.is_success" 
                                                   :class="[revisionForm.is_success ? 'bg-emerald-500' : 'bg-red-500', 'relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2']">
                                               <span class="sr-only">Goal Achievement</span>
@@ -3314,10 +3358,9 @@ const formatDate = (dateStr) => {
                         </div>
 
                          <!-- 3. NEXT PLAN SECTION (Hidden when Closing) -->
-                        <div v-if="revisionForm.has_report && !isRevisionClosing" class="bg-blue-50/30 p-4 sm:p-6 rounded-3xl border border-blue-100 shadow-sm relative overflow-hidden">
-                             <div class="absolute top-0 left-0 w-1.5 h-full bg-blue-500"></div>
-                             <h3 class="text-base font-bold text-gray-900 mb-2 flex items-center gap-2 pl-2">
-                                Next Plan (Mandatory)
+                        <div v-if="revisionForm.has_report && !isRevisionClosing" class="bg-white p-4 sm:p-6 rounded-3xl border border-gray-100 shadow-sm relative overflow-hidden">
+                             <h3 class="text-base font-bold text-gray-900 mb-2 flex items-center gap-2">
+                                Next Planning
                              </h3>
                              <p class="text-xs text-blue-800 mb-6 font-medium italic pl-2">Since you're reporting, please define the next plan.</p>
                              
@@ -3325,7 +3368,7 @@ const formatDate = (dateStr) => {
                                   <!-- Row 1: Next Date & Activity Type -->
                                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                       <div>
-                                         <label class="block text-sm font-bold text-gray-700 mb-2">Next Activity Type</label>
+                                         <label class="block text-xs font-bold text-gray-900 mb-2">Next Activity Type</label>
                                          <select v-model="revisionForm.next_activity_type" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm bg-white shadow-sm cursor-pointer font-medium text-gray-600">
                                              <option value="" disabled>Select Activity</option>
                                              <option v-for="type in activityTypes" :key="type" :value="type">{{ type }}</option>
@@ -3333,7 +3376,7 @@ const formatDate = (dateStr) => {
                                          <p v-if="revisionForm.errors.next_activity_type" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.next_activity_type }}</p>
                                       </div>
                                       <div>
-                                         <label class="block text-sm font-bold text-gray-700 mb-2">Next Planning Date</label>
+                                         <label class="block text-xs font-bold text-gray-900 mb-2">Next Planning Date</label>
                                          <input v-model="revisionForm.next_planning_date" type="date" :min="revisionMinNextPlanDate" :max="revisionMaxNextPlanDate" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm shadow-sm bg-white font-medium text-gray-600">
                                          <p v-if="revisionForm.errors.next_planning_date" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.next_planning_date }}</p>
                                       </div>
@@ -3341,7 +3384,7 @@ const formatDate = (dateStr) => {
                                   
                                    <!-- Next Desc -->
                                   <div>
-                                     <label class="block text-sm font-bold text-gray-700 mb-2">Next Plan Description</label>
+                                     <label class="block text-xs font-bold text-gray-900 mb-2">Next Plan Description</label>
                                      <textarea v-model="revisionForm.next_plan_description" rows="3" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm resize-none shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="Plan description for next meeting..."></textarea>
                                      <p v-if="revisionForm.errors.next_plan_description" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.next_plan_description }}</p>
                                   </div>
@@ -3365,13 +3408,12 @@ const formatDate = (dateStr) => {
                     </div>
                 </div>
 
-                <div class="flex items-center justify-end pt-6 border-t border-gray-50 mt-8 gap-3">
-                     <button type="button" @click="closeRevisionModal" class="px-5 py-2.5 text-sm font-bold text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors">
+                <div class="flex flex-col sm:flex-row items-center justify-end pt-6 border-t border-gray-100 mt-8 gap-3">
+                     <button type="button" @click="closeRevisionModal" class="w-full sm:w-auto px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors order-2 sm:order-1">
                         Cancel
                     </button>
                     <button type="submit" 
-                        class="px-6 py-2.5 text-sm font-bold text-white bg-emerald-500 rounded-xl hover:bg-emerald-600 hover:shadow-lg hover:shadow-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-all duration-200"
-                        :class="{'opacity-75 cursor-wait': revisionForm.processing}"
+                        class="w-full sm:w-auto px-8 py-2.5 text-sm font-bold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2"
                         :disabled="revisionForm.processing">
                         Update Revision
                     </button>
@@ -3379,6 +3421,25 @@ const formatDate = (dateStr) => {
             </form>
         </div>
     </Modal>
+
+    <!-- Planning Create Modal -->
+    <PlanningForm 
+        :show="showPlanningModal" 
+        :customers="allCustomers" 
+        :products="products" 
+        :selectedCustomer="selectedPlanningCustomer"
+        :selectedDate="selectedPlanningDate"
+        @close="closePlanningModal" 
+    />
+
+    <!-- Planning Report Modal -->
+    <PlanningReportForm
+        :show="showReportModal"
+        :plan="selectedReportPlan"
+        :companyName="selectedReportCompanyName"
+        :currentSimulatedTime="currentSimulatedTime"
+        @close="closeReportModal"
+    />
 </template>
 
 <style>

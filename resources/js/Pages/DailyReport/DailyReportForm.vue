@@ -16,6 +16,7 @@ const props = defineProps({
 const emit = defineEmits(['close']);
 
 const isSuperAdmin = props.auth.user.roles.includes('Super Admin');
+const isManager = props.auth.user.roles.includes('Manager');
 
 const form = useForm({
     user_id: props.report?.user_id || props.auth.user.id,
@@ -63,14 +64,18 @@ watch(() => props.report, (newReport) => {
 }, { immediate: true });
 
 const activityTypes = [
-    'Call', 'Visit', 'Ent', 'Online Meeting', 'Email', 'Survey', 
-    'Presentation', 'Proposal', 'Negotiation', 'Admin/Tender', 'Closing', 'Other'
+    'Call', 'Visit', 'Ent', 'Online Meeting', 'Survey', 
+    'Presentation', 'Proposal', 'Negotiation', 'Admin/Tender', 'Other'
 ];
 
 const progressOptions = [
     '10%-Introduction', '20%-Visit', '30%-Presentation', '40%-Survey', 
     '50%-Proposal', '75%-Confirm Budget', '90%-Tender/Nego', '100%-Closing'
 ];
+
+const selectedUserData = computed(() => {
+    return props.users?.find(u => u.id === form.user_id) || props.auth.user;
+});
 
 // Customer Search Logic
 const customerQuery = ref('');
@@ -131,38 +136,40 @@ const submit = () => {
 <template>
     <Modal :show="show" @close="$emit('close')" maxWidth="2xl">
         <div class="font-sans">
-            <!-- Header (Identical Icon & Text Style) -->
-            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-                <div class="flex items-center gap-2 sm:gap-3 min-w-0">
-                    <div>
-                        <h1 class="text-sm sm:text-lg font-bold text-gray-900 leading-tight">{{ report ? 'Edit' : 'Create' }} Daily Activity</h1>
-                        <p class="text-[10px] sm:text-xs text-gray-400">Record sales activity for today</p>
-                    </div>
+            <!-- Header -->
+            <div class="px-4 py-4 sm:px-5 sm:py-4 bg-emerald-600 flex items-center justify-between rounded-t-xl">
+                <div class="pr-8 sm:pr-0">
+                    <h2 class="text-base sm:text-lg font-bold text-white leading-tight">{{ report ? 'Edit' : 'Create' }} Daily Activity</h2>
+                    <p class="text-[9px] sm:text-xs text-emerald-100 flex items-center gap-1">
+                        Record sales activity for today
+                    </p>
                 </div>
-                <button @click="$emit('close')" class="p-2 -mr-2 text-gray-400 hover:text-gray-600 transition-colors rounded-full hover:bg-gray-100">
-                    <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                <button @click="$emit('close')" class="p-2 -mr-2 text-emerald-100 hover:text-white transition-colors rounded-full hover:bg-emerald-500/50">
+                    <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                 </button>
             </div>
 
             <form @submit.prevent="submit" class="max-h-[75vh] overflow-y-auto">
                 <!-- Section: Salesperson (Identical to Create.vue) -->
                 <div class="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100">
-                    <label class="block text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Report For <span class="text-rose-400">*</span></label>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Report For <span class="text-rose-400">*</span></label>
 
                     <!-- Super Admin: Dropdown -->
                     <select v-if="isSuperAdmin" v-model="form.user_id" required
-                        class="w-full rounded-lg border-gray-200 bg-gray-50/50 py-2.5 px-3 text-sm text-gray-700 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors">
+                        class="w-full rounded-xl border-gray-200 bg-gray-50/50 py-2.5 px-3 text-sm text-gray-700 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors shadow-sm">
                         <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }} ({{ user.email }})</option>
                     </select>
 
-                    <!-- Regular User: Display -->
-                    <div v-else class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-gray-50 border border-gray-100">
+                    <!-- Manager / Regular User: Static Display -->
+                    <div v-else class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-50 border border-gray-100 shadow-sm">
                         <div class="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 text-xs font-semibold flex-shrink-0">
-                            {{ auth.user.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) }}
+                            {{ selectedUserData.name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) }}
                         </div>
                         <div class="min-w-0 flex-1">
-                            <p class="text-xs sm:text-sm font-bold text-gray-800 truncate">{{ auth.user.name }}</p>
-                            <p class="text-[10px] sm:text-xs text-gray-400 truncate">{{ auth.user.email }}</p>
+                            <p class="text-xs sm:text-sm font-bold text-gray-800 truncate">{{ selectedUserData.name }}</p>
+                            <p class="text-[10px] sm:text-xs text-gray-400 truncate">{{ selectedUserData.email }}</p>
                         </div>
                     </div>
                     <p v-if="isSuperAdmin" class="text-[10px] text-gray-400 mt-1.5">Recording activity on behalf of salesperson.</p>
@@ -170,15 +177,15 @@ const submit = () => {
 
                 <!-- Section: Customer & Product (Identical to Create.vue) -->
                 <div class="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 space-y-4">
-                    <div class="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Customer & Product</div>
+                    <div class="text-sm font-bold text-gray-700 mb-1">Customer & Product</div>
 
                     <!-- Customer -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Company Name <span class="text-rose-400">*</span></label>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Company Name <span class="text-rose-400">*</span></label>
                         <Combobox v-model="selectedCustomer" nullable>
                             <div class="relative">
                                 <ComboboxInput
-                                    class="w-full rounded-lg border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors"
+                                    class="w-full rounded-xl border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors shadow-sm"
                                     :displayValue="(customer) => customer?.company_name ?? ''"
                                     @change="customerQuery = $event.target.value"
                                     placeholder=""
@@ -189,7 +196,7 @@ const submit = () => {
                                         <path fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z" clip-rule="evenodd" />
                                     </svg>
                                 </ComboboxButton>
-                                <ComboboxOptions class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white py-1 text-sm shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                <ComboboxOptions class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl bg-white py-1 text-sm shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none">
                                     <div v-if="filteredCustomers.length === 0 && customerQuery !== ''" class="relative cursor-default select-none px-4 py-2 text-gray-700">
                                         No customer found.
                                     </div>
@@ -219,11 +226,11 @@ const submit = () => {
                     <!-- Product & Date -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Product</label>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Product</label>
                             <Combobox v-model="selectedProduct" nullable>
                                 <div class="relative">
                                     <ComboboxInput
-                                        class="w-full rounded-lg border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors"
+                                        class="w-full rounded-xl border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors shadow-sm"
                                         :displayValue="(product) => product?.name ?? ''"
                                         @change="productQuery = $event.target.value"
                                         placeholder=""
@@ -233,7 +240,7 @@ const submit = () => {
                                             <path fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z" clip-rule="evenodd" />
                                         </svg>
                                     </ComboboxButton>
-                                    <ComboboxOptions class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white py-1 text-sm shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none">
+                                    <ComboboxOptions class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl bg-white py-1 text-sm shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none">
                                         <div v-if="filteredProducts.length === 0 && productQuery !== ''" class="relative cursor-default select-none px-4 py-2 text-gray-700">
                                             No product found.
                                         </div>
@@ -259,77 +266,77 @@ const submit = () => {
                             </Combobox>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Report Date <span class="text-rose-400">*</span></label>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Report Date <span class="text-rose-400">*</span></label>
                             <input v-model="form.report_date" type="date" required
-                                class="w-full rounded-lg border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors" />
+                                class="w-full rounded-xl border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors shadow-sm" />
                         </div>
                     </div>
                 </div>
 
                 <!-- Section: Activity Details (Identical to Create.vue) -->
                 <div class="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 space-y-4">
-                    <div class="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Activity Details</div>
+                    <div class="text-sm font-bold text-gray-700 mb-1">Activity Details</div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Activity Type <span class="text-rose-400">*</span></label>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Activity Type <span class="text-rose-400">*</span></label>
                             <select v-model="form.activity_type" required
-                                class="w-full rounded-lg border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors">
+                                class="w-full rounded-xl border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors shadow-sm">
                                 <option value="" disabled>Select Activity</option>
                                 <option v-for="type in activityTypes" :key="type" :value="type">{{ type }}</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Location <span class="text-rose-400">*</span></label>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Location <span class="text-rose-400">*</span></label>
                             <input v-model="form.location" type="text" required
-                                class="w-full rounded-lg border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 placeholder:text-gray-300 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors" />
+                                class="w-full rounded-xl border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 placeholder:text-gray-300 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors shadow-sm" />
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Customer PIC <span class="text-rose-400">*</span></label>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">Person In Charge <span class="text-rose-400">*</span></label>
                             <input v-model="form.pic" type="text" required
-                                class="w-full rounded-lg border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 placeholder:text-gray-300 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors" />
+                                class="w-full rounded-xl border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 placeholder:text-gray-300 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors shadow-sm" />
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">PIC Position <span class="text-rose-400">*</span></label>
+                            <label class="block text-sm font-bold text-gray-700 mb-2">PIC Position <span class="text-rose-400">*</span></label>
                             <input v-model="form.position" type="text" required
-                                class="w-full rounded-lg border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 placeholder:text-gray-300 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors" />
+                                class="w-full rounded-xl border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 placeholder:text-gray-300 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors shadow-sm" />
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Activity Description <span class="text-rose-400">*</span></label>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Activity Description <span class="text-rose-400">*</span></label>
                         <textarea v-model="form.description" required rows="3"
-                            class="w-full rounded-lg border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 placeholder:text-gray-300 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 resize-none transition-colors"
+                            class="w-full rounded-xl border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 placeholder:text-gray-300 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 resize-none transition-colors shadow-sm"
                         ></textarea>
                     </div>
                 </div>
 
                 <!-- Section: Results & Outcome (Identical to Create.vue) -->
                 <div class="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 space-y-4">
-                    <div class="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Results & Outcome</div>
+                    <div class="text-sm font-bold text-gray-700 mb-1">Results & Outcome</div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Result Description <span class="text-rose-400">*</span></label>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Result Description <span class="text-rose-400">*</span></label>
                         <textarea v-model="form.result_description" required rows="3"
-                            class="w-full rounded-lg border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 placeholder:text-gray-300 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 resize-none transition-colors"
+                            class="w-full rounded-xl border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 placeholder:text-gray-300 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 resize-none transition-colors shadow-sm"
                         ></textarea>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Next Plan</label>
-                        <textarea v-model="form.next_plan" rows="2"
-                            class="w-full rounded-lg border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 placeholder:text-gray-300 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 resize-none transition-colors"
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Next Plan</label>
+                        <textarea v-model="form.next_plan" rows="3"
+                            class="w-full rounded-xl border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 placeholder:text-gray-300 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 resize-none transition-colors shadow-sm"
                         ></textarea>
                     </div>
 
                     <!-- Progress -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Progress <span class="text-rose-400">*</span></label>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">Progress <span class="text-rose-400">*</span></label>
                         <select v-model="form.progress" required
-                            class="w-full rounded-lg border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors">
+                            class="w-full rounded-xl border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors shadow-sm">
                             <option value="" disabled>Select Progress</option>
                             <option v-for="p in progressOptions" :key="p" :value="p">{{ p }}</option>
                         </select>
@@ -361,13 +368,13 @@ const submit = () => {
                 </div>
 
                 <!-- Submit Footer (Identical to Create.vue) -->
-                <div class="px-4 sm:px-5 py-3 sm:py-4 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-end gap-2 sm:gap-3 rounded-b-lg">
+                <div class="px-4 sm:px-5 py-3 sm:py-4 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-end gap-2 sm:gap-3 rounded-b-xl border-t border-gray-100">
                     <button type="button" @click="$emit('close')"
-                        class="w-full sm:w-auto px-4 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors order-2 sm:order-1">
+                        class="w-full sm:w-auto px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors order-2 sm:order-1">
                         Cancel
                     </button>
                     <button type="submit" :disabled="form.processing"
-                        class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg shadow-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2">
+                        class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl shadow-sm disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2 transition-all active:scale-95">
                         <svg v-if="form.processing" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>

@@ -496,6 +496,8 @@ function initActivityMarketingChart() {
     
     const ctx = activityMarketingChart.value.getContext('2d');
     const chartData = activityMarketingData.value;
+    const isMobile = window.innerWidth < 480;
+    const isTablet = window.innerWidth >= 480 && window.innerWidth < 768;
     
     if (activityMarketingChartInstance) {
         activityMarketingChartInstance.destroy();
@@ -508,7 +510,7 @@ function initActivityMarketingChart() {
             datasets: [{
                 data: chartData.data,
                 backgroundColor: chartData.colors,
-                borderWidth: 2,
+                borderWidth: isMobile ? 1 : 2,
                 borderColor: '#fff'
             }]
         },
@@ -516,20 +518,21 @@ function initActivityMarketingChart() {
             animation: false,
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '60%',
+            cutout: isMobile ? '50%' : '60%',
             plugins: {
                 legend: {
                     position: 'bottom',
                     labels: {
                         usePointStyle: true,
-                        padding: 15,
+                        padding: isMobile ? 8 : (isTablet ? 10 : 15),
                         font: {
-                            size: 12
-                        }
+                            size: isMobile ? 9 : (isTablet ? 10 : 12)
+                        },
+                        boxWidth: isMobile ? 8 : 12
                     }
                 },
                 datalabels: {
-                    display: false // Hide text on chart slices
+                    display: false
                 }
             }
         }
@@ -541,6 +544,8 @@ function initCustomerHealthChart() {
     
     const ctx = customerHealthChart.value.getContext('2d');
     const chartData = customerHealthData.value;
+    const isMobile = window.innerWidth < 480;
+    const isTablet = window.innerWidth >= 480 && window.innerWidth < 768;
     
     if (customerHealthChartInstance) {
         customerHealthChartInstance.destroy();
@@ -555,7 +560,7 @@ function initCustomerHealthChart() {
             datasets: [{
                 data: chartData.data,
                 backgroundColor: chartData.colors,
-                borderWidth: 3,
+                borderWidth: isMobile ? 1 : 3,
                 borderColor: '#fff'
             }]
         },
@@ -563,20 +568,21 @@ function initCustomerHealthChart() {
             animation: false,
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '60%',
+            cutout: isMobile ? '50%' : '60%',
             plugins: {
                 legend: {
                     position: 'bottom',
                     labels: {
                         usePointStyle: true,
-                        padding: 15,
+                        padding: isMobile ? 8 : (isTablet ? 10 : 15),
                         font: {
-                            size: 12
-                        }
+                            size: isMobile ? 9 : (isTablet ? 10 : 12)
+                        },
+                        boxWidth: isMobile ? 8 : 12
                     }
                 },
                 datalabels: {
-                    display: false // Hide text on chart slices
+                    display: false
                 }
             }
         }
@@ -587,10 +593,15 @@ function initActivityTrendChart() {
     if (!activityTrendChart.value || !props.dailyActivityTrend) return;
     
     const ctx = activityTrendChart.value.getContext('2d');
+    const isMobile = window.innerWidth < 480;
+    const isTablet = window.innerWidth >= 480 && window.innerWidth < 768;
     
     // Process data - last 30 days
     const labels = props.dailyActivityTrend.map(item => {
         const date = new Date(item.date);
+        if (isMobile) {
+            return date.toLocaleDateString('en-US', { day: 'numeric' });
+        }
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     });
     
@@ -609,14 +620,14 @@ function initActivityTrendChart() {
                 data: data,
                 borderColor: '#f59e0b',
                 backgroundColor: 'rgba(245, 158, 11, 0.1)',
-                borderWidth: 3,
+                borderWidth: isMobile ? 2 : 3,
                 fill: true,
                 tension: 0.4,
                 pointBackgroundColor: '#f59e0b',
                 pointBorderColor: '#fff',
-                pointBorderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 6,
+                pointBorderWidth: isMobile ? 1 : 2,
+                pointRadius: isMobile ? 2 : (isTablet ? 3 : 4),
+                pointHoverRadius: isMobile ? 4 : 6,
             }]
         },
         options: {
@@ -628,13 +639,13 @@ function initActivityTrendChart() {
                 },
                 tooltip: {
                     backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    padding: 12,
+                    padding: isMobile ? 8 : 12,
                     titleFont: {
-                        size: 14,
+                        size: isMobile ? 11 : 14,
                         weight: 'bold'
                     },
                     bodyFont: {
-                        size: 13
+                        size: isMobile ? 10 : 13
                     },
                     callbacks: {
                         label: function(context) {
@@ -649,10 +660,12 @@ function initActivityTrendChart() {
                         display: false
                     },
                     ticks: {
-                        maxRotation: 45,
-                        minRotation: 45,
+                        maxRotation: isMobile ? 90 : 45,
+                        minRotation: isMobile ? 45 : 45,
+                        autoSkip: true,
+                        maxTicksLimit: isMobile ? 10 : (isTablet ? 15 : 30),
                         font: {
-                            size: 11
+                            size: isMobile ? 8 : (isTablet ? 9 : 11)
                         }
                     }
                 },
@@ -664,7 +677,7 @@ function initActivityTrendChart() {
                     ticks: {
                         stepSize: 5,
                         font: {
-                            size: 11
+                            size: isMobile ? 9 : 11
                         }
                     }
                 }
@@ -689,6 +702,27 @@ watch(() => props.customerHealthStats, () => {
         initCustomerHealthChart();
     }
 }, { deep: true });
+
+watch(() => props.dailyActivityTrend, () => {
+    if (typeof Chart !== 'undefined' && activityTrendChart.value) {
+        initActivityTrendChart();
+    }
+}, { deep: true });
+
+// Reinitialize charts on window resize for responsive layouts
+let resizeTimer = null;
+if (typeof window !== 'undefined') {
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+            if (typeof Chart !== 'undefined') {
+                if (activityMarketingChart.value) initActivityMarketingChart();
+                if (customerHealthChart.value) initCustomerHealthChart();
+                if (activityTrendChart.value) initActivityTrendChart();
+            }
+        }, 300);
+    });
+}
 </script>
 
 <template>
@@ -818,11 +852,11 @@ watch(() => props.customerHealthStats, () => {
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
             
             <!-- Chart 1: Activity Marketing (Doughnut) -->
-            <div class="bg-gray-100 rounded-2xl pt-5 px-3 pb-3">
-                <h3 class="text-gray-900 text-lg font-bold ml-3 mb-4">Activity Marketing</h3>
-                <div class="bg-white rounded-2xl p-4 md:p-5">
+            <div class="bg-gray-100 rounded-2xl pt-4 xs:pt-5 px-2 xs:px-3 pb-2 xs:pb-3">
+                <h3 class="text-gray-900 text-base xs:text-lg font-bold ml-2 xs:ml-3 mb-3 xs:mb-4">Activity Marketing</h3>
+                <div class="bg-white rounded-2xl p-3 xs:p-4 md:p-5">
                     <div class="w-full">
-                        <div class="h-64">
+                        <div class="h-48 xs:h-56 md:h-64">
                             <canvas ref="activityMarketingChart"></canvas>
                         </div>
                     </div>
@@ -830,11 +864,11 @@ watch(() => props.customerHealthStats, () => {
             </div>
 
             <!-- Chart 2: Customer Health Status (Doughnut) -->
-            <div class="bg-gray-100 rounded-2xl pt-5 px-3 pb-3">
-                <h3 class="text-gray-900 text-lg font-bold ml-3 mb-4">Planning Health</h3>
-                <div class="bg-white rounded-2xl p-4 md:p-5">
+            <div class="bg-gray-100 rounded-2xl pt-4 xs:pt-5 px-2 xs:px-3 pb-2 xs:pb-3">
+                <h3 class="text-gray-900 text-base xs:text-lg font-bold ml-2 xs:ml-3 mb-3 xs:mb-4">Planning Health</h3>
+                <div class="bg-white rounded-2xl p-3 xs:p-4 md:p-5">
                     <div class="w-full">
-                        <div class="h-64">
+                        <div class="h-48 xs:h-56 md:h-64">
                             <canvas ref="customerHealthChart"></canvas>
                         </div>
                     </div>
@@ -843,50 +877,49 @@ watch(() => props.customerHealthStats, () => {
         </div>
 
         <!-- Chart 3: Customer Health Status (Inactive Duration) -->
-        <div class="bg-gray-100 rounded-2xl pt-5 px-3 pb-3 mb-6 md:mb-8">
-            <h3 class="text-gray-900 text-lg font-bold ml-3 mb-4">Customer Health Status (Inactive Duration)</h3>
-            <div class="bg-white rounded-2xl p-4 md:p-5">
-                <div class="flex gap-4 pl-4 pr-8 relative mb-4">
+        <div class="bg-gray-100 rounded-2xl pt-4 xs:pt-5 px-2 xs:px-3 pb-2 xs:pb-3 mb-6 md:mb-8">
+            <h3 class="text-gray-900 text-base xs:text-lg font-bold ml-2 xs:ml-3 mb-3 xs:mb-4">Customer Health Status (Inactive Duration)</h3>
+            <div class="bg-white rounded-2xl p-2 xs:p-3 md:p-5 overflow-x-auto">
+                <div class="flex gap-2 xs:gap-3 md:gap-4 pl-2 xs:pl-4 pr-4 xs:pr-8 relative mb-4 min-w-[500px] xs:min-w-0">
                 <!-- Y-Axis -->
-                <div class="flex flex-col justify-between items-end h-80 relative shrink-0 w-8 select-none">
-                    <div class="absolute -left-10 top-1/2 -translate-y-1/2 -rotate-90 text-xs font-bold text-gray-500 whitespace-nowrap tracking-wide">
+                <div class="flex flex-col justify-between items-end h-48 xs:h-64 md:h-80 relative shrink-0 w-6 xs:w-8 select-none">
+                    <div class="absolute -left-6 xs:-left-10 top-1/2 -translate-y-1/2 -rotate-90 text-[9px] xs:text-[10px] md:text-xs font-bold text-gray-500 whitespace-nowrap tracking-wide">
                         Day Inactive
                     </div>
-                    <!-- Safe Loop with Index -->
-                    <div v-for="(tick, i) in yAxisTicks" :key="'tick-'+i" class="text-xs text-gray-400 font-medium h-4 flex items-center transform translate-y-2">
+                    <div v-for="(tick, i) in yAxisTicks" :key="'tick-'+i" class="text-[9px] xs:text-[10px] md:text-xs text-gray-400 font-medium h-3 xs:h-4 flex items-center transform translate-y-2">
                         {{ tick }}
                     </div>
                 </div>
 
                 <!-- Chart Area -->
-                <div class="flex-1 relative h-80 border-l border-b border-gray-100">
+                <div class="flex-1 relative h-48 xs:h-64 md:h-80 border-l border-b border-gray-100">
                     <!-- Grid Lines -->
                     <div class="absolute inset-0 w-full h-full flex flex-col justify-between pointer-events-none">
                         <div v-for="(tick, i) in yAxisTicks" :key="'grid-'+i" class="w-full border-t border-gray-100/60 h-0 transform translate-y-2"></div>
                     </div>
 
                     <!-- Bars -->
-                    <div class="relative w-full h-full flex items-end justify-between px-2 gap-2 z-10">
-                         <div v-if="paginatedCustomers.length === 0" class="absolute inset-0 flex items-center justify-center text-gray-400">No Data Available</div>
+                    <div class="relative w-full h-full flex items-end justify-between px-1 xs:px-2 gap-0.5 xs:gap-1 md:gap-2 z-10">
+                         <div v-if="paginatedCustomers.length === 0" class="absolute inset-0 flex items-center justify-center text-gray-400 text-xs xs:text-sm">No Data Available</div>
 
                          <div v-for="customer in paginatedCustomers" :key="customer.id" class="group flex flex-col justify-end items-center flex-1 h-full relative">
                               
-                              <!-- Bar (Pill Shape) -->
-                              <div class="w-full max-w-[40px] rounded-lg transition-all duration-500 hover:opacity-90 relative"
+                              <!-- Bar -->
+                              <div class="w-full max-w-[20px] xs:max-w-[30px] md:max-w-[40px] rounded-md xs:rounded-lg transition-all duration-500 hover:opacity-90 relative"
                                    :class="customer.is_warning ? 'bg-red-500' : 'bg-emerald-400'" 
                                    :style="{ 
                                         height: Math.max((customer.days_inactive / (yAxisMax || 1) * 100), 1) + '%',
                                         backgroundColor: customer.is_warning ? '#ef4444' : '#34d399'
                                    }">
                                    
-                                  <!-- Tooltip (Restored) -->
+                                  <!-- Tooltip -->
                                   <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-50 pointer-events-none transition-opacity duration-200 min-w-max">
-                                      <div class="bg-gray-900 text-white text-xs rounded-md py-2 px-3 shadow-xl mb-1 flex flex-col items-center gap-1">
+                                      <div class="bg-gray-900 text-white text-[10px] xs:text-xs rounded-md py-1.5 xs:py-2 px-2 xs:px-3 shadow-xl mb-1 flex flex-col items-center gap-1">
                                           <span class="font-bold uppercase tracking-wide border-b border-gray-700 pb-1 mb-1 whitespace-nowrap">
                                               {{ customer.name }}{{ customer.product ? ' (' + customer.product + ')' : '' }}
                                           </span>
-                                          <div class="flex items-center gap-2">
-                                              <span class="w-2 h-2 rounded-full" :class="customer.is_warning ? 'bg-red-400' : 'bg-emerald-400'"></span>
+                                          <div class="flex items-center gap-1.5 xs:gap-2">
+                                              <span class="w-1.5 h-1.5 xs:w-2 xs:h-2 rounded-full" :class="customer.is_warning ? 'bg-red-400' : 'bg-emerald-400'"></span>
                                               <span>Inactive: {{ customer.days_inactive }} days</span>
                                           </div>
                                       </div>
@@ -895,7 +928,7 @@ watch(() => props.customerHealthStats, () => {
                               </div>
                               
                               <!-- Label -->
-                              <div class="absolute top-full left-1/2 mt-3 transform rotate-45 origin-top-left text-[10px] text-gray-500 font-medium whitespace-nowrap w-32 truncate group-hover:text-gray-800 transition-colors z-0">
+                              <div class="absolute top-full left-1/2 mt-2 xs:mt-3 transform rotate-45 origin-top-left text-[8px] xs:text-[9px] md:text-[10px] text-gray-500 font-medium whitespace-nowrap w-16 xs:w-24 md:w-32 truncate group-hover:text-gray-800 transition-colors z-0">
                                   {{ customer.name }}
                               </div>
                          </div>
@@ -903,22 +936,22 @@ watch(() => props.customerHealthStats, () => {
                 </div>
             </div>
 
-                    <div class="h-32"></div>
+                    <div class="h-16 xs:h-24 md:h-32"></div>
 
-                    <div class="text-center text-sm font-bold text-gray-700 mb-4 select-none">
+                    <div class="text-center text-[10px] xs:text-xs md:text-sm font-bold text-gray-700 mb-3 xs:mb-4 select-none">
                         Customer Name (Product)
                     </div>
 
                     <!-- Pagination -->
-                    <div class="flex items-center justify-end gap-4 mt-2 px-4 border-t border-gray-100 pt-4 select-none">
-                        <span class="text-sm text-gray-500">Page {{ currentPage }} of {{ totalPages }}</span>
-                        <div class="flex gap-2">
+                    <div class="flex items-center justify-between xs:justify-end gap-2 xs:gap-4 mt-2 px-2 xs:px-4 border-t border-gray-100 pt-3 xs:pt-4 select-none">
+                        <span class="text-[10px] xs:text-xs md:text-sm text-gray-500">Page {{ currentPage }} / {{ totalPages }}</span>
+                        <div class="flex gap-1.5 xs:gap-2">
                             <button @click="prevPage" :disabled="currentPage === 1" 
-                                    class="px-3 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-gray-700">
+                                    class="px-2 xs:px-3 py-1 text-[10px] xs:text-xs md:text-sm bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-gray-700">
                                 « Prev
                             </button>
                             <button @click="nextPage" :disabled="currentPage === totalPages"
-                                    class="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
+                                    class="px-2 xs:px-3 py-1 text-[10px] xs:text-xs md:text-sm bg-blue-50 text-blue-600 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
                                 Next »
                             </button>
                         </div>
@@ -927,39 +960,37 @@ watch(() => props.customerHealthStats, () => {
             </div>
 
         <!-- Chart 4: Companies Activity Breakdown (Stacked Bar) -->
-        <div class="bg-gray-100 rounded-2xl pt-5 px-3 pb-3 mb-6 md:mb-8">
-            <h3 class="text-gray-900 text-lg font-bold ml-3 mb-4">Companies Activity Breakdown</h3>
-            <div class="bg-white rounded-2xl p-4 md:p-5">
-                <div class="flex gap-4 pl-4 pr-8 relative mb-4">
+        <div class="bg-gray-100 rounded-2xl pt-4 xs:pt-5 px-2 xs:px-3 pb-2 xs:pb-3 mb-6 md:mb-8">
+            <h3 class="text-gray-900 text-base xs:text-lg font-bold ml-2 xs:ml-3 mb-3 xs:mb-4">Companies Activity Breakdown</h3>
+            <div class="bg-white rounded-2xl p-2 xs:p-3 md:p-5 overflow-x-auto">
+                <div class="flex gap-2 xs:gap-3 md:gap-4 pl-2 xs:pl-4 pr-4 xs:pr-8 relative mb-4 min-w-[500px] xs:min-w-0">
                     <!-- Y-Axis (All Activity) -->
-                <div class="flex flex-col justify-between items-end h-80 relative shrink-0 w-10 select-none">
-                    <div class="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-xs font-bold text-gray-500 whitespace-nowrap tracking-wide">
+                <div class="flex flex-col justify-between items-end h-48 xs:h-64 md:h-80 relative shrink-0 w-6 xs:w-8 md:w-10 select-none">
+                    <div class="absolute -left-6 xs:-left-8 md:-left-12 top-1/2 -translate-y-1/2 -rotate-90 text-[9px] xs:text-[10px] md:text-xs font-bold text-gray-500 whitespace-nowrap tracking-wide">
                         ALL ACTIVITY
                     </div>
-                    <!-- Dynamic Y-Axis Ticks -->
-                    <div v-for="i in 6" :key="'ytick-'+i" class="text-xs text-gray-400 font-medium h-4 flex items-center transform translate-y-2">
+                    <div v-for="i in 6" :key="'ytick-'+i" class="text-[9px] xs:text-[10px] md:text-xs text-gray-400 font-medium h-3 xs:h-4 flex items-center transform translate-y-2">
                         {{ Math.round(maxTotalActivity * (6-i) / 5) }}
                     </div>
                 </div>
 
                 <!-- Chart Area -->
-                <div class="flex-1 relative h-80 border-l border-b border-gray-100">
+                <div class="flex-1 relative h-48 xs:h-64 md:h-80 border-l border-b border-gray-100">
                     <!-- Grid Lines -->
                     <div class="absolute inset-0 w-full h-full flex flex-col justify-between pointer-events-none">
                         <div v-for="i in 6" :key="'ygrid-'+i" class="w-full border-t border-gray-100/60 h-0 transform translate-y-2"></div>
                     </div>
 
                     <!-- Stacked Bars Container -->
-                    <div class="relative w-full h-full flex items-end justify-between px-2 gap-1 z-10">
-                         <div v-if="paginatedActivityCustomers.length === 0" class="absolute inset-0 flex items-center justify-center text-gray-400">No Activity Data</div>
+                    <div class="relative w-full h-full flex items-end justify-between px-1 xs:px-2 gap-0.5 xs:gap-1 z-10">
+                         <div v-if="paginatedActivityCustomers.length === 0" class="absolute inset-0 flex items-center justify-center text-gray-400 text-xs xs:text-sm">No Activity Data</div>
 
                          <div v-for="(customer, cidx) in paginatedActivityCustomers" :key="'act-'+customer.id" class="group flex flex-col justify-end items-center flex-1 h-full relative">
                               
-                              <!-- Stacked Bar (Pill Shape) -->
-                              <div class="w-full max-w-[50px] rounded-lg overflow-hidden relative flex flex-col-reverse items-stretch"
+                              <!-- Stacked Bar -->
+                              <div class="w-full max-w-[24px] xs:max-w-[36px] md:max-w-[50px] rounded-md xs:rounded-lg overflow-hidden relative flex flex-col-reverse items-stretch"
                                    :style="{ height: Math.max((customer.total / maxTotalActivity * 100), 1) + '%' }">
                                    
-                                  <!-- Activity Segments (Bottom to Top) -->
                                   <div v-for="(count, activityType, idx) in customer.activities" :key="activityType"
                                        class="transition-opacity duration-300 relative"
                                        :style="{ 
@@ -969,14 +1000,14 @@ watch(() => props.customerHealthStats, () => {
                                   </div>
                               </div>
                               
-                              <!-- Tooltip on Hover (Positioned closer to bar) -->
+                              <!-- Tooltip -->
                               <div class="absolute -bottom-6 left-1/2 -translate-x-1/2 -translate-y-full mb-3 hidden group-hover:flex flex-col items-start z-[100] pointer-events-none transition-opacity duration-200 min-w-max">
-                                  <div class="bg-gray-900 text-white text-xs rounded-md py-2 px-3 shadow-xl mb-1">
+                                  <div class="bg-gray-900 text-white text-[10px] xs:text-xs rounded-md py-1.5 xs:py-2 px-2 xs:px-3 shadow-xl mb-1">
                                       <div class="font-bold uppercase tracking-wide border-b border-gray-700 pb-1 mb-2 whitespace-nowrap text-center">
                                           {{ customer.name }} - {{ customer.max_progress || 0 }}%
                                       </div>
-                                      <div v-for="(count, activityType) in customer.activities" :key="'tt-'+activityType" class="flex items-center gap-2 mb-1">
-                                          <span class="w-3 h-3 rounded-full flex-shrink-0" :style="{ backgroundColor: activityColors[activityType] }"></span>
+                                      <div v-for="(count, activityType) in customer.activities" :key="'tt-'+activityType" class="flex items-center gap-1.5 xs:gap-2 mb-1">
+                                          <span class="w-2 h-2 xs:w-3 xs:h-3 rounded-full flex-shrink-0" :style="{ backgroundColor: activityColors[activityType] }"></span>
                                           <span class="whitespace-nowrap">{{ props.activity_type_map[activityType] || activityType }}: {{ count }}</span>
                                       </div>
                                   </div>
@@ -984,7 +1015,7 @@ watch(() => props.customerHealthStats, () => {
                               </div>
                               
                               <!-- Label (Customer Name - Rotated) -->
-                              <div class="absolute top-full left-1/2 mt-3 transform rotate-45 origin-top-left text-[10px] text-gray-500 font-medium whitespace-nowrap w-32 truncate group-hover:text-gray-800 transition-colors z-0">
+                              <div class="absolute top-full left-1/2 mt-2 xs:mt-3 transform rotate-45 origin-top-left text-[8px] xs:text-[9px] md:text-[10px] text-gray-500 font-medium whitespace-nowrap w-16 xs:w-24 md:w-32 truncate group-hover:text-gray-800 transition-colors z-0">
                                   {{ customer.name }}
                               </div>
                          </div>
@@ -992,31 +1023,31 @@ watch(() => props.customerHealthStats, () => {
                 </div>
                 </div>
 
-                <div class="h-32"></div>
+                <div class="h-16 xs:h-24 md:h-32"></div>
 
                     <!-- X-Axis Title -->
-                    <div class="text-center text-sm font-bold text-gray-700 mb-6 select-none">
+                    <div class="text-center text-[10px] xs:text-xs md:text-sm font-bold text-gray-700 mb-4 xs:mb-6 select-none">
                         Customer Name
                     </div>
 
                     <!-- Legend (Activity Types) -->
-                    <div class="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-6 pb-6 border-b border-gray-100">
-                        <div v-for="type in activityTypes" :key="type" class="flex items-center gap-2">
-                            <span class="w-3 h-3 rounded-full" :style="{ backgroundColor: activityColors[type] || '#9ca3af' }"></span>
-                            <span class="text-xs text-gray-600 font-medium">{{ props.activity_type_map[type] || type }}</span>
+                    <div class="flex flex-wrap justify-center gap-x-2 xs:gap-x-3 md:gap-x-4 gap-y-1.5 xs:gap-y-2 mb-4 xs:mb-6 pb-4 xs:pb-6 border-b border-gray-100">
+                        <div v-for="type in activityTypes" :key="type" class="flex items-center gap-1 xs:gap-1.5 md:gap-2">
+                            <span class="w-2 h-2 xs:w-2.5 xs:h-2.5 md:w-3 md:h-3 rounded-full" :style="{ backgroundColor: activityColors[type] || '#9ca3af' }"></span>
+                            <span class="text-[9px] xs:text-[10px] md:text-xs text-gray-600 font-medium">{{ props.activity_type_map[type] || type }}</span>
                         </div>
                     </div>
 
                     <!-- Pagination -->
-                    <div class="flex items-center justify-end gap-4 px-4 select-none">
-                        <span class="text-sm text-gray-500">Page {{ currentActivityPage }} of {{ activityTotalPages }}</span>
-                        <div class="flex gap-2">
+                    <div class="flex items-center justify-between xs:justify-end gap-2 xs:gap-4 px-2 xs:px-4 select-none">
+                        <span class="text-[10px] xs:text-xs md:text-sm text-gray-500">Page {{ currentActivityPage }} / {{ activityTotalPages }}</span>
+                        <div class="flex gap-1.5 xs:gap-2">
                             <button @click="prevActivityPage" :disabled="currentActivityPage === 1" 
-                                    class="px-3 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-gray-700">
+                                    class="px-2 xs:px-3 py-1 text-[10px] xs:text-xs md:text-sm bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-gray-700">
                                 « Prev
                             </button>
                             <button @click="nextActivityPage" :disabled="currentActivityPage === activityTotalPages"
-                                    class="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
+                                    class="px-2 xs:px-3 py-1 text-[10px] xs:text-xs md:text-sm bg-blue-50 text-blue-600 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">
                                 Next »
                             </button>
                         </div>
@@ -1025,10 +1056,10 @@ watch(() => props.customerHealthStats, () => {
             </div>
 
         <!-- Chart 5: Activity Trend (Line Chart with Chart.js) -->
-        <div class="bg-gray-100 rounded-2xl pt-5 px-3 pb-3 mb-6 md:mb-8">
-            <h3 class="text-gray-900 text-lg font-bold ml-3 mb-4">Activity Trend</h3>
-            <div class="bg-white rounded-2xl p-4 md:p-5">
-                <div class="relative" style="height: 400px;">
+        <div class="bg-gray-100 rounded-2xl pt-4 xs:pt-5 px-2 xs:px-3 pb-2 xs:pb-3 mb-6 md:mb-8">
+            <h3 class="text-gray-900 text-base xs:text-lg font-bold ml-2 xs:ml-3 mb-3 xs:mb-4">Activity Trend</h3>
+            <div class="bg-white rounded-2xl p-3 xs:p-4 md:p-5">
+                <div class="relative h-56 xs:h-72 md:h-96">
                     <canvas ref="activityTrendChart"></canvas>
                 </div>
             </div>
@@ -1387,42 +1418,42 @@ watch(() => props.customerHealthStats, () => {
             </div>
 
             <!-- Analytics Dashboard Group Box -->
-            <div class="bg-white rounded-[2.5rem] p-6 md:p-10 shadow-lg border border-gray-100 relative overflow-hidden mb-12">
+            <div class="bg-white rounded-2xl xs:rounded-[2.5rem] p-4 xs:p-6 md:p-10 shadow-lg border border-gray-100 relative overflow-hidden mb-8 xs:mb-12">
                 <!-- Decorative Top Object -->
                 <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-gray-50 rounded-full blur-3xl opacity-50 pointer-events-none"></div>
 
                 <!-- Dashboard Header -->
-                <div class="mb-8 relative z-10">
-                    <h1 class="text-3xl font-black text-gray-900 tracking-tight">Analytics Dashboard</h1>
-                    <p class="text-gray-500 font-medium mt-2">Comprehensive data insights and performance metrics</p>
+                <div class="mb-6 xs:mb-8 relative z-10">
+                    <h1 class="text-xl xs:text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Analytics Dashboard</h1>
+                    <p class="text-gray-500 font-medium mt-1 xs:mt-2 text-xs xs:text-sm md:text-base">Comprehensive data insights and performance metrics</p>
                 </div>
 
                 <!-- Date Filter Section -->
                 <!-- Date & User Filter Section -->
-                <div class="mb-10 p-6 bg-gray-50 rounded-3xl border border-gray-100">
-                     <div class="flex items-center gap-3 mb-6">
-                        <div class="w-1.5 h-6 bg-emerald-500 rounded-full"></div>
-                        <h3 class="text-lg font-bold text-gray-900">Filters</h3>
+                <div class="mb-8 xs:mb-10 p-4 xs:p-5 md:p-6 bg-gray-50 rounded-2xl xs:rounded-3xl border border-gray-100">
+                     <div class="flex items-center gap-2 xs:gap-3 mb-4 xs:mb-6">
+                        <div class="w-1 xs:w-1.5 h-5 xs:h-6 bg-emerald-500 rounded-full"></div>
+                        <h3 class="text-sm xs:text-base md:text-lg font-bold text-gray-900">Filters</h3>
                      </div>
-                     <div class="grid grid-cols-1 gap-6" :class="teams.length > 0 ? 'md:grid-cols-4' : (users.length > 0 ? 'md:grid-cols-3' : 'md:grid-cols-2')">
+                     <div class="grid grid-cols-1 xs:grid-cols-2 gap-3 xs:gap-4 md:gap-6" :class="teams.length > 0 ? 'md:grid-cols-4' : (users.length > 0 ? 'md:grid-cols-3' : 'md:grid-cols-2')">
                          <div>
-                             <label class="block text-sm font-bold text-gray-700 mb-2">Start Date</label>
-                             <input type="date" v-model="filterForm.start_date" class="w-full rounded-2xl border-gray-200 bg-white focus:ring-emerald-500 focus:border-emerald-500 text-sm py-3 px-4 transition-all outline-none">
+                             <label class="block text-xs xs:text-sm font-bold text-gray-700 mb-1 xs:mb-2">Start Date</label>
+                             <input type="date" v-model="filterForm.start_date" class="w-full rounded-xl xs:rounded-2xl border-gray-200 bg-white focus:ring-emerald-500 focus:border-emerald-500 text-xs xs:text-sm py-2 xs:py-3 px-3 xs:px-4 transition-all outline-none">
                          </div>
                          <div>
-                             <label class="block text-sm font-bold text-gray-700 mb-2">End Date</label>
-                             <input type="date" v-model="filterForm.end_date" class="w-full rounded-2xl border-gray-200 bg-white focus:ring-emerald-500 focus:border-emerald-500 text-sm py-3 px-4 transition-all outline-none">
+                             <label class="block text-xs xs:text-sm font-bold text-gray-700 mb-1 xs:mb-2">End Date</label>
+                             <input type="date" v-model="filterForm.end_date" class="w-full rounded-xl xs:rounded-2xl border-gray-200 bg-white focus:ring-emerald-500 focus:border-emerald-500 text-xs xs:text-sm py-2 xs:py-3 px-3 xs:px-4 transition-all outline-none">
                          </div>
                          <div v-if="teams.length > 0">
-                             <label class="block text-sm font-bold text-gray-700 mb-2">Filter Team</label>
-                             <select v-model="filterForm.team_id" class="w-full rounded-2xl border-gray-200 bg-white focus:ring-emerald-500 focus:border-emerald-500 text-sm py-3 px-4 transition-all outline-none">
+                             <label class="block text-xs xs:text-sm font-bold text-gray-700 mb-1 xs:mb-2">Filter Team</label>
+                             <select v-model="filterForm.team_id" class="w-full rounded-xl xs:rounded-2xl border-gray-200 bg-white focus:ring-emerald-500 focus:border-emerald-500 text-xs xs:text-sm py-2 xs:py-3 px-3 xs:px-4 transition-all outline-none">
                                  <option :value="null">All Teams</option>
                                  <option v-for="team in teams" :key="team.id" :value="team.id">{{ team.name }}</option>
                              </select>
                          </div>
                          <div v-if="users.length > 0">
-                             <label class="block text-sm font-bold text-gray-700 mb-2">Filter User</label>
-                             <select v-model="filterForm.user_id" class="w-full rounded-2xl border-gray-200 bg-white focus:ring-emerald-500 focus:border-emerald-500 text-sm py-3 px-4 transition-all outline-none">
+                             <label class="block text-xs xs:text-sm font-bold text-gray-700 mb-1 xs:mb-2">Filter User</label>
+                             <select v-model="filterForm.user_id" class="w-full rounded-xl xs:rounded-2xl border-gray-200 bg-white focus:ring-emerald-500 focus:border-emerald-500 text-xs xs:text-sm py-2 xs:py-3 px-3 xs:px-4 transition-all outline-none">
                                  <option :value="null">All Team Members</option>
                                  <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }}</option>
                              </select>
@@ -1431,156 +1462,156 @@ watch(() => props.customerHealthStats, () => {
                 </div>
 
                 <!-- Key Metrics Section -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                <div class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 xs:gap-4 md:gap-6 mb-10">
                     <!-- Stat Card 1 -->
-                    <div class="bg-gray-50 rounded-3xl p-6 border border-gray-100 flex items-center justify-between hover:bg-gray-100 transition-colors">
+                    <div class="bg-gray-50 rounded-2xl xs:rounded-3xl p-3 xs:p-4 md:p-6 border border-gray-100 flex items-center justify-between hover:bg-gray-100 transition-colors">
                         <div>
-                            <p class="text-gray-500 text-sm font-bold mb-1">Total Daily Activity</p>
-                            <p class="text-gray-900 text-3xl font-black">{{ totalDailyActivitiesCount }}</p>
+                            <p class="text-gray-500 text-[10px] xs:text-xs md:text-sm font-bold mb-0.5 xs:mb-1">Total Daily Activity</p>
+                            <p class="text-gray-900 text-xl xs:text-2xl md:text-3xl font-black">{{ totalDailyActivitiesCount }}</p>
                         </div>
-                        <div class="w-14 h-14 bg-white text-amber-600 rounded-2xl flex items-center justify-center shadow-sm">
-                             <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                        <div class="w-10 h-10 xs:w-12 xs:h-12 md:w-14 md:h-14 bg-white text-amber-600 rounded-xl xs:rounded-2xl flex items-center justify-center shadow-sm shrink-0">
+                             <svg class="w-5 h-5 xs:w-6 xs:h-6 md:w-7 md:h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
                         </div>
                     </div>
                     <!-- Stat Card 2 -->
-                    <div class="bg-gray-50 rounded-3xl p-6 border border-gray-100 flex items-center justify-between hover:bg-gray-100 transition-colors">
+                    <div class="bg-gray-50 rounded-2xl xs:rounded-3xl p-3 xs:p-4 md:p-6 border border-gray-100 flex items-center justify-between hover:bg-gray-100 transition-colors">
                         <div>
-                            <p class="text-gray-500 text-sm font-bold mb-1">Total Planning</p>
-                            <p class="text-gray-900 text-3xl font-black">{{ totalPlanningCount }}</p>
+                            <p class="text-gray-500 text-[10px] xs:text-xs md:text-sm font-bold mb-0.5 xs:mb-1">Total Planning</p>
+                            <p class="text-gray-900 text-xl xs:text-2xl md:text-3xl font-black">{{ totalPlanningCount }}</p>
                         </div>
-                        <div class="w-14 h-14 bg-white text-blue-600 rounded-2xl flex items-center justify-center shadow-sm">
-                            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        <div class="w-10 h-10 xs:w-12 xs:h-12 md:w-14 md:h-14 bg-white text-blue-600 rounded-xl xs:rounded-2xl flex items-center justify-center shadow-sm shrink-0">
+                            <svg class="w-5 h-5 xs:w-6 xs:h-6 md:w-7 md:h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                         </div>
                     </div>
                      <!-- Stat Card 3 -->
-                    <div class="bg-gray-50 rounded-3xl p-6 border border-gray-100 flex items-center justify-between hover:bg-gray-100 transition-colors">
+                    <div class="bg-gray-50 rounded-2xl xs:rounded-3xl p-3 xs:p-4 md:p-6 border border-gray-100 flex items-center justify-between hover:bg-gray-100 transition-colors">
                         <div>
-                            <p class="text-gray-500 text-sm font-bold mb-1">Active Customers</p>
-                            <p class="text-gray-900 text-3xl font-black">{{ activeCustomerCount }}</p>
+                            <p class="text-gray-500 text-[10px] xs:text-xs md:text-sm font-bold mb-0.5 xs:mb-1">Active Customers</p>
+                            <p class="text-gray-900 text-xl xs:text-2xl md:text-3xl font-black">{{ activeCustomerCount }}</p>
                         </div>
-                        <div class="w-14 h-14 bg-white text-emerald-600 rounded-2xl flex items-center justify-center shadow-sm">
-                             <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                        <div class="w-10 h-10 xs:w-12 xs:h-12 md:w-14 md:h-14 bg-white text-emerald-600 rounded-xl xs:rounded-2xl flex items-center justify-center shadow-sm shrink-0">
+                             <svg class="w-5 h-5 xs:w-6 xs:h-6 md:w-7 md:h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
                         </div>
                     </div>
                      <!-- Stat Card 4 -->
-                    <div class="bg-gray-50 rounded-3xl p-6 border border-gray-100 flex items-center justify-between hover:bg-gray-100 transition-colors">
+                    <div class="bg-gray-50 rounded-2xl xs:rounded-3xl p-3 xs:p-4 md:p-6 border border-gray-100 flex items-center justify-between hover:bg-gray-100 transition-colors">
                         <div>
-                             <p class="text-gray-500 text-sm font-bold mb-1">Total Customers</p>
-                             <p class="text-gray-900 text-3xl font-black">{{ totalCustomerCount }}</p>
+                             <p class="text-gray-500 text-[10px] xs:text-xs md:text-sm font-bold mb-0.5 xs:mb-1">Total Customers</p>
+                             <p class="text-gray-900 text-xl xs:text-2xl md:text-3xl font-black">{{ totalCustomerCount }}</p>
                         </div>
-                        <div class="w-14 h-14 bg-white text-yellow-600 rounded-2xl flex items-center justify-center shadow-sm">
-                            <svg class="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                        <div class="w-10 h-10 xs:w-12 xs:h-12 md:w-14 md:h-14 bg-white text-yellow-600 rounded-xl xs:rounded-2xl flex items-center justify-center shadow-sm shrink-0">
+                            <svg class="w-5 h-5 xs:w-6 xs:h-6 md:w-7 md:h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                         </div>
                     </div>
                 </div>
 
                 <!-- Charts Section -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
-                    <div class="bg-gray-50 rounded-3xl p-8 border border-gray-100">
-                         <h3 class="text-xl font-bold text-gray-900 mb-6">Activity Marketing</h3>
-                         <div class="h-64"><canvas ref="activityMarketingChart"></canvas></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 xs:gap-6 mb-10">
+                    <div class="bg-gray-50 rounded-2xl xs:rounded-3xl p-4 xs:p-6 md:p-8 border border-gray-100">
+                         <h3 class="text-base xs:text-lg md:text-xl font-bold text-gray-900 mb-4 xs:mb-6">Activity Marketing</h3>
+                         <div class="h-48 xs:h-56 md:h-64"><canvas ref="activityMarketingChart"></canvas></div>
                     </div>
-                    <div class="bg-gray-50 rounded-3xl p-8 border border-gray-100">
-                         <h3 class="text-xl font-bold text-gray-900 mb-6">Planning Health</h3>
-                         <div class="h-64"><canvas ref="customerHealthChart"></canvas></div>
+                    <div class="bg-gray-50 rounded-2xl xs:rounded-3xl p-4 xs:p-6 md:p-8 border border-gray-100">
+                         <h3 class="text-base xs:text-lg md:text-xl font-bold text-gray-900 mb-4 xs:mb-6">Planning Health</h3>
+                         <div class="h-48 xs:h-56 md:h-64"><canvas ref="customerHealthChart"></canvas></div>
                     </div>
                 </div>
 
                 <!-- Inactive Duration -->
-                <div class="bg-gray-50 rounded-3xl p-4 md:p-8 border border-gray-100 mb-10">
-                    <h3 class="text-xl font-bold text-gray-900 mb-6">Customer Health (Inactive Duration)</h3>
-                    <div class="relative bg-white rounded-2xl p-2 md:p-5 overflow-x-auto">
-                    <div class="flex gap-4 pl-8 pr-4 relative mb-4 min-w-[750px] md:min-w-0">
+                <div class="bg-gray-50 rounded-2xl xs:rounded-3xl p-3 xs:p-4 md:p-8 border border-gray-100 mb-8 xs:mb-10">
+                    <h3 class="text-base xs:text-lg md:text-xl font-bold text-gray-900 mb-4 xs:mb-6">Customer Health (Inactive Duration)</h3>
+                    <div class="relative bg-white rounded-xl xs:rounded-2xl p-2 xs:p-3 md:p-5 overflow-x-auto">
+                    <div class="flex gap-2 xs:gap-3 md:gap-4 pl-4 xs:pl-6 md:pl-8 pr-2 xs:pr-4 relative mb-4 min-w-[500px] xs:min-w-0">
                         <!-- Y-Axis -->
-                        <div class="flex flex-col justify-between items-end h-80 relative shrink-0 w-8 select-none">
-                            <div class="absolute -left-10 top-1/2 -translate-y-1/2 -rotate-90 text-xs font-bold text-gray-500 whitespace-nowrap tracking-wide capitalize">{{ timeUnit }} Inactive</div>
-                            <div v-for="(tick, i) in yAxisTicks" :key="'tick-'+i" class="text-xs text-gray-400 font-medium h-4 flex items-center transform translate-y-2">{{ tick }}</div>
+                        <div class="flex flex-col justify-between items-end h-48 xs:h-64 md:h-80 relative shrink-0 w-6 xs:w-8 select-none">
+                            <div class="absolute -left-4 xs:-left-8 md:-left-10 top-1/2 -translate-y-1/2 -rotate-90 text-[8px] xs:text-[10px] md:text-xs font-bold text-gray-500 whitespace-nowrap tracking-wide capitalize">{{ timeUnit }} Inactive</div>
+                            <div v-for="(tick, i) in yAxisTicks" :key="'tick-'+i" class="text-[9px] xs:text-[10px] md:text-xs text-gray-400 font-medium h-3 xs:h-4 flex items-center transform translate-y-2">{{ tick }}</div>
                         </div>
                         <!-- Chart Area -->
-                        <div class="flex-1 relative h-80 border-l border-b border-gray-100">
+                        <div class="flex-1 relative h-48 xs:h-64 md:h-80 border-l border-b border-gray-100">
                              <div class="absolute inset-0 w-full h-full flex flex-col justify-between pointer-events-none">
                                   <div v-for="(tick, i) in yAxisTicks" :key="'grid-'+i" class="w-full border-t border-gray-100/60 h-0 transform translate-y-2"></div>
                              </div>
-                             <div class="relative w-full h-full flex items-end justify-between px-2 gap-2 z-10">
-                                  <div v-if="paginatedCustomers.length === 0" class="absolute inset-0 flex items-center justify-center text-gray-400">No Data Available</div>
+                             <div class="relative w-full h-full flex items-end justify-between px-1 xs:px-2 gap-0.5 xs:gap-1 md:gap-2 z-10">
+                                  <div v-if="paginatedCustomers.length === 0" class="absolute inset-0 flex items-center justify-center text-gray-400 text-xs xs:text-sm">No Data Available</div>
                                   <div v-for="customer in paginatedCustomers" :key="customer.id" class="group flex flex-col justify-end items-center flex-1 h-full relative">
-                                       <div class="w-full max-w-[40px] rounded-lg transition-all duration-500 hover:opacity-90 relative" :class="customer.is_warning ? 'bg-red-500' : 'bg-emerald-400'" :style="{ height: Math.max((customer.days_inactive / (yAxisMax || 1) * 100), 1) + '%', backgroundColor: customer.is_warning ? '#ef4444' : '#34d399' }">
+                                       <div class="w-full max-w-[20px] xs:max-w-[30px] md:max-w-[40px] rounded-md xs:rounded-lg transition-all duration-500 hover:opacity-90 relative" :class="customer.is_warning ? 'bg-red-500' : 'bg-emerald-400'" :style="{ height: Math.max((customer.days_inactive / (yAxisMax || 1) * 100), 1) + '%', backgroundColor: customer.is_warning ? '#ef4444' : '#34d399' }">
                                             <div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:flex flex-col items-center z-50 pointer-events-none transition-opacity duration-200 min-w-max">
-                                                 <div class="bg-gray-900 text-white text-xs rounded-md py-2 px-3 shadow-xl mb-1 flex flex-col items-center gap-1">
+                                                 <div class="bg-gray-900 text-white text-[10px] xs:text-xs rounded-md py-1.5 xs:py-2 px-2 xs:px-3 shadow-xl mb-1 flex flex-col items-center gap-1">
                                                       <span class="font-bold uppercase tracking-wide border-b border-gray-700 pb-1 mb-1 whitespace-nowrap">{{ customer.name }}{{ customer.product ? ' (' + customer.product + ')' : '' }}</span>
-                                                      <div class="flex items-center gap-2"><span class="w-2 h-2 rounded-full" :class="customer.is_warning ? 'bg-red-400' : 'bg-emerald-400'"></span><span>Inactive: {{ customer.days_inactive }} {{ timeUnit }}</span></div>
+                                                      <div class="flex items-center gap-1.5 xs:gap-2"><span class="w-1.5 h-1.5 xs:w-2 xs:h-2 rounded-full" :class="customer.is_warning ? 'bg-red-400' : 'bg-emerald-400'"></span><span>Inactive: {{ customer.days_inactive }} {{ timeUnit }}</span></div>
                                                  </div>
                                                  <div class="w-2 h-2 bg-gray-900 rotate-45 -mt-1.5"></div>
                                             </div>
                                        </div>
-                                       <div class="absolute top-full left-1/2 mt-3 transform rotate-45 origin-top-left text-[10px] text-gray-500 font-medium whitespace-nowrap w-32 truncate group-hover:text-gray-800 transition-colors z-0">{{ customer.name }}</div>
+                                       <div class="absolute top-full left-1/2 mt-2 xs:mt-3 transform rotate-45 origin-top-left text-[8px] xs:text-[9px] md:text-[10px] text-gray-500 font-medium whitespace-nowrap w-16 xs:w-24 md:w-32 truncate group-hover:text-gray-800 transition-colors z-0">{{ customer.name }}</div>
                                   </div>
                              </div>
                         </div>
                     </div>
-                    <div class="h-32"></div>
-                    <div class="text-center text-sm font-bold text-gray-700 mb-4 select-none">Customer Name (Product)</div>
+                    <div class="h-16 xs:h-24 md:h-32"></div>
+                    <div class="text-center text-[10px] xs:text-xs md:text-sm font-bold text-gray-700 mb-3 xs:mb-4 select-none">Customer Name (Product)</div>
                     <!-- Pagination -->
-                    <div class="flex items-center justify-end gap-4 mt-2 px-4 border-t border-gray-100 pt-4 select-none">
-                        <span class="text-sm text-gray-500">Page {{ currentPage }} of {{ totalPages }}</span>
-                        <div class="flex gap-2">
-                            <button @click="prevPage" :disabled="currentPage === 1" class="px-3 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-gray-700">« Prev</button>
-                            <button @click="nextPage" :disabled="currentPage === totalPages" class="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">Next »</button>
+                    <div class="flex items-center justify-between xs:justify-end gap-2 xs:gap-4 mt-2 px-2 xs:px-4 border-t border-gray-100 pt-3 xs:pt-4 select-none">
+                        <span class="text-[10px] xs:text-xs md:text-sm text-gray-500">Page {{ currentPage }} / {{ totalPages }}</span>
+                        <div class="flex gap-1.5 xs:gap-2">
+                            <button @click="prevPage" :disabled="currentPage === 1" class="px-2 xs:px-3 py-1 text-[10px] xs:text-xs md:text-sm bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-gray-700">« Prev</button>
+                            <button @click="nextPage" :disabled="currentPage === totalPages" class="px-2 xs:px-3 py-1 text-[10px] xs:text-xs md:text-sm bg-blue-50 text-blue-600 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">Next »</button>
                         </div>
                     </div>
                 </div>
             </div>
 
                 <!-- Companies Activity Breakdown -->
-                <div class="bg-gray-50 rounded-3xl p-4 md:p-8 border border-gray-100 mb-10">
-                    <h3 class="text-xl font-bold text-gray-900 mb-6">Companies Activity Breakdown</h3>
-                    <div class="bg-white rounded-2xl p-2 md:p-5 overflow-x-auto">
-                    <div class="flex gap-4 pl-8 pr-4 relative mb-4 min-w-[750px] md:min-w-0">
-                        <div class="flex flex-col justify-between items-end h-80 relative shrink-0 w-10 select-none">
-                            <div class="absolute -left-12 top-1/2 -translate-y-1/2 -rotate-90 text-xs font-bold text-gray-500 whitespace-nowrap tracking-wide">ALL ACTIVITY</div>
-                            <div v-for="i in 6" :key="'ytick-'+i" class="text-xs text-gray-400 font-medium h-4 flex items-center transform translate-y-2">{{ Math.round(maxTotalActivity * (6-i) / 5) }}</div>
+                <div class="bg-gray-50 rounded-2xl xs:rounded-3xl p-3 xs:p-4 md:p-8 border border-gray-100 mb-8 xs:mb-10">
+                    <h3 class="text-base xs:text-lg md:text-xl font-bold text-gray-900 mb-4 xs:mb-6">Companies Activity Breakdown</h3>
+                    <div class="bg-white rounded-xl xs:rounded-2xl p-2 xs:p-3 md:p-5 overflow-x-auto">
+                    <div class="flex gap-2 xs:gap-3 md:gap-4 pl-4 xs:pl-6 md:pl-8 pr-2 xs:pr-4 relative mb-4 min-w-[500px] xs:min-w-0">
+                        <div class="flex flex-col justify-between items-end h-48 xs:h-64 md:h-80 relative shrink-0 w-6 xs:w-8 md:w-10 select-none">
+                            <div class="absolute -left-4 xs:-left-8 md:-left-12 top-1/2 -translate-y-1/2 -rotate-90 text-[8px] xs:text-[10px] md:text-xs font-bold text-gray-500 whitespace-nowrap tracking-wide">ALL ACTIVITY</div>
+                            <div v-for="i in 6" :key="'ytick-'+i" class="text-[9px] xs:text-[10px] md:text-xs text-gray-400 font-medium h-3 xs:h-4 flex items-center transform translate-y-2">{{ Math.round(maxTotalActivity * (6-i) / 5) }}</div>
                         </div>
-                        <div class="flex-1 relative h-80 border-l border-b border-gray-100">
+                        <div class="flex-1 relative h-48 xs:h-64 md:h-80 border-l border-b border-gray-100">
                              <div class="absolute inset-0 w-full h-full flex flex-col justify-between pointer-events-none">
                                   <div v-for="i in 6" :key="'ygrid-'+i" class="w-full border-t border-gray-100/60 h-0 transform translate-y-2"></div>
                              </div>
-                             <div class="relative w-full h-full flex items-end justify-between px-2 gap-1 z-10">
-                                  <div v-if="paginatedActivityCustomers.length === 0" class="absolute inset-0 flex items-center justify-center text-gray-400">No Activity Data</div>
+                             <div class="relative w-full h-full flex items-end justify-between px-1 xs:px-2 gap-0.5 xs:gap-1 z-10">
+                                  <div v-if="paginatedActivityCustomers.length === 0" class="absolute inset-0 flex items-center justify-center text-gray-400 text-xs xs:text-sm">No Activity Data</div>
                                   <div v-for="(customer, cidx) in paginatedActivityCustomers" :key="'act-'+customer.id" class="group flex flex-col justify-end items-center flex-1 h-full relative">
-                                       <div class="w-full max-w-[50px] rounded-lg overflow-hidden relative flex flex-col-reverse items-stretch" :style="{ height: Math.max((customer.total / maxTotalActivity * 100), 1) + '%' }">
+                                       <div class="w-full max-w-[24px] xs:max-w-[36px] md:max-w-[50px] rounded-md xs:rounded-lg overflow-hidden relative flex flex-col-reverse items-stretch" :style="{ height: Math.max((customer.total / maxTotalActivity * 100), 1) + '%' }">
                                             <div v-for="(count, activityType, idx) in customer.activities" :key="activityType" class="transition-opacity duration-300 relative" :style="{ height: (count / customer.total * 100) + '%', backgroundColor: activityColors[activityType] || '#9ca3af' }"></div>
                                        </div>
                                        <div class="absolute -bottom-6 left-1/2 -translate-x-1/2 -translate-y-full mb-3 hidden group-hover:flex flex-col items-start z-[100] pointer-events-none transition-opacity duration-200 min-w-max">
-                                            <div class="bg-gray-900 text-white text-xs rounded-md py-2 px-3 shadow-xl mb-1">
+                                            <div class="bg-gray-900 text-white text-[10px] xs:text-xs rounded-md py-1.5 xs:py-2 px-2 xs:px-3 shadow-xl mb-1">
                                                  <div class="font-bold uppercase tracking-wide border-b border-gray-700 pb-1 mb-2 whitespace-nowrap text-center">{{ customer.name }} {{ Math.round((customer.total / (paginatedActivityCustomers.reduce((sum, c) => sum + c.total, 0) || 1)) * 100) }}%</div>
-                                                 <div v-for="(count, activityType) in customer.activities" :key="'tt-'+activityType" class="flex items-center gap-2 mb-1"><span class="w-3 h-3 rounded-full flex-shrink-0" :style="{ backgroundColor: activityColors[activityType] }"></span><span class="whitespace-nowrap">{{ props.activity_type_map[activityType] || activityType }}: {{ count }}</span></div>
+                                                 <div v-for="(count, activityType) in customer.activities" :key="'tt-'+activityType" class="flex items-center gap-1.5 xs:gap-2 mb-1"><span class="w-2 h-2 xs:w-3 xs:h-3 rounded-full flex-shrink-0" :style="{ backgroundColor: activityColors[activityType] }"></span><span class="whitespace-nowrap">{{ props.activity_type_map[activityType] || activityType }}: {{ count }}</span></div>
                                             </div>
                                             <div class="w-2 h-2 bg-gray-900 rotate-45 -mt-1.5 self-center"></div>
                                        </div>
-                                       <div class="absolute top-full left-1/2 mt-3 transform rotate-45 origin-top-left text-[10px] text-gray-500 font-medium whitespace-nowrap w-32 truncate group-hover:text-gray-800 transition-colors z-0">{{ customer.name }}</div>
+                                       <div class="absolute top-full left-1/2 mt-2 xs:mt-3 transform rotate-45 origin-top-left text-[8px] xs:text-[9px] md:text-[10px] text-gray-500 font-medium whitespace-nowrap w-16 xs:w-24 md:w-32 truncate group-hover:text-gray-800 transition-colors z-0">{{ customer.name }}</div>
                                   </div>
                              </div>
                         </div>
                     </div>
-                    <div class="h-32"></div>
-                    <div class="text-center text-sm font-bold text-gray-700 mb-6 select-none">Customer Name</div>
-                    <div class="flex flex-wrap justify-center gap-x-4 gap-y-2 mb-6 pb-6 border-b border-gray-100">
-                        <div v-for="type in activityTypes" :key="type" class="flex items-center gap-2"><span class="w-3 h-3 rounded-full" :style="{ backgroundColor: activityColors[type] || '#9ca3af' }"></span><span class="text-xs text-gray-600 font-medium">{{ props.activity_type_map[type] || type }}</span></div>
+                    <div class="h-16 xs:h-24 md:h-32"></div>
+                    <div class="text-center text-[10px] xs:text-xs md:text-sm font-bold text-gray-700 mb-4 xs:mb-6 select-none">Customer Name</div>
+                    <div class="flex flex-wrap justify-center gap-x-2 xs:gap-x-3 md:gap-x-4 gap-y-1.5 xs:gap-y-2 mb-4 xs:mb-6 pb-4 xs:pb-6 border-b border-gray-100">
+                        <div v-for="type in activityTypes" :key="type" class="flex items-center gap-1 xs:gap-1.5 md:gap-2"><span class="w-2 h-2 xs:w-2.5 xs:h-2.5 md:w-3 md:h-3 rounded-full" :style="{ backgroundColor: activityColors[type] || '#9ca3af' }"></span><span class="text-[9px] xs:text-[10px] md:text-xs text-gray-600 font-medium">{{ props.activity_type_map[type] || type }}</span></div>
                     </div>
-                    <div class="flex items-center justify-end gap-4 px-4 select-none">
-                        <span class="text-sm text-gray-500">Page {{ currentActivityPage }} of {{ activityTotalPages }}</span>
-                        <div class="flex gap-2">
-                            <button @click="prevActivityPage" :disabled="currentActivityPage === 1" class="px-3 py-1 text-sm bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-gray-700">« Prev</button>
-                            <button @click="nextActivityPage" :disabled="currentActivityPage === activityTotalPages" class="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">Next »</button>
+                    <div class="flex items-center justify-between xs:justify-end gap-2 xs:gap-4 px-2 xs:px-4 select-none">
+                        <span class="text-[10px] xs:text-xs md:text-sm text-gray-500">Page {{ currentActivityPage }} / {{ activityTotalPages }}</span>
+                        <div class="flex gap-1.5 xs:gap-2">
+                            <button @click="prevActivityPage" :disabled="currentActivityPage === 1" class="px-2 xs:px-3 py-1 text-[10px] xs:text-xs md:text-sm bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium text-gray-700">« Prev</button>
+                            <button @click="nextActivityPage" :disabled="currentActivityPage === activityTotalPages" class="px-2 xs:px-3 py-1 text-[10px] xs:text-xs md:text-sm bg-blue-50 text-blue-600 rounded hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium">Next »</button>
                         </div>
                     </div>
                 </div>
             </div>
 
                 <!-- Activity Trend -->
-                <div class="bg-gray-50 rounded-3xl p-4 md:p-8 border border-gray-100">
-                    <h3 class="text-xl font-bold text-gray-900 mb-6">Activity Trend</h3>
-                    <div class="relative" style="height: 400px;"><canvas ref="activityTrendChart"></canvas></div>
+                <div class="bg-gray-50 rounded-2xl xs:rounded-3xl p-3 xs:p-4 md:p-8 border border-gray-100">
+                    <h3 class="text-base xs:text-lg md:text-xl font-bold text-gray-900 mb-4 xs:mb-6">Activity Trend</h3>
+                    <div class="relative h-56 xs:h-72 md:h-96"><canvas ref="activityTrendChart"></canvas></div>
                 </div>
             </div>
 

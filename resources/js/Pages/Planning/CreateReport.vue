@@ -63,7 +63,7 @@ const minNextPlanDate = computed(() => {
 const maxNextPlanDate = computed(() => {
     if (!form.execution_date) return '';
     const date = new Date(form.execution_date);
-    date.setDate(date.getDate() + 14);
+    date.setDate(date.getDate() + 365); // Far future (1 year)
     return date.toISOString().split('T')[0];
 });
 
@@ -118,56 +118,50 @@ const submit = () => {
                  <div v-if="form.errors.execution_date" class="text-red-500 text-xs mt-1 font-medium">{{ form.errors.execution_date }}</div>
             </div>
 
-            <!-- Location -->
-            <div>
-                 <label class="block text-sm font-bold text-gray-700 mb-2">Location</label>
-                 <input v-model="form.location" type="text" required
-                    class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm shadow-sm placeholder:text-gray-400"
-                    placeholder="Enter location"
-                 />
-                 <div v-if="form.errors.location" class="text-red-500 text-xs mt-1 font-medium">{{ form.errors.location }}</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Location -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">Location</label>
+                    <input v-model="form.location" type="text" required
+                        class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm shadow-sm placeholder:text-gray-400"
+                        placeholder="Enter location"
+                    />
+                    <div v-if="form.errors.location" class="text-red-500 text-xs mt-1 font-medium">{{ form.errors.location }}</div>
+                </div>
+
+                <!-- Progress -->
+                <div>
+                     <label class="block text-sm font-bold text-gray-700 mb-2">Progress</label>
+                     <select v-model="form.progress" required
+                        class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm bg-white shadow-sm cursor-pointer"
+                     >
+                        <option value="" disabled>Select Progress</option>
+                        <option v-for="opt in progressOptions" :key="opt" :value="opt">{{ opt }}</option>
+                     </select>
+                     <div v-if="form.errors.progress" class="text-red-500 text-xs mt-1 font-medium">{{ form.errors.progress }}</div>
+                </div>
             </div>
 
-             <!-- PIC -->
-            <div>
-                 <label class="block text-sm font-bold text-gray-700 mb-2">Person In Charge</label>
-                 <input v-model="form.pic" type="text" required
-                    class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm shadow-sm placeholder:text-gray-400"
-                    placeholder="Enter person in charge"
-                 />
-                 <div v-if="form.errors.pic" class="text-red-500 text-xs mt-1 font-medium">{{ form.errors.pic }}</div>
-            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <!-- PIC -->
+                <div>
+                     <label class="block text-sm font-bold text-gray-700 mb-2">Person In Charge</label>
+                     <input v-model="form.pic" type="text" required
+                        class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm shadow-sm placeholder:text-gray-400"
+                        placeholder="Enter person in charge"
+                     />
+                     <div v-if="form.errors.pic" class="text-red-500 text-xs mt-1 font-medium">{{ form.errors.pic }}</div>
+                </div>
 
-             <!-- Division / Position -->
-            <div>
-                 <label class="block text-sm font-bold text-gray-700 mb-2">Division / Position</label>
-                 <input v-model="form.position" type="text" required
-                    class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm shadow-sm placeholder:text-gray-400"
-                    placeholder="Enter division or position"
-                 />
-                 <div v-if="form.errors.position" class="text-red-500 text-xs mt-1 font-medium">{{ form.errors.position }}</div>
-            </div>
-
-            <!-- Result Description -->
-            <div>
-                 <label class="block text-sm font-bold text-gray-700 mb-2">Result Description</label>
-                 <textarea v-model="form.result_description" required rows="3"
-                    class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm resize-none shadow-sm placeholder:text-gray-400"
-                    placeholder="Describe the result"
-                 ></textarea>
-                 <div v-if="form.errors.result_description" class="text-red-500 text-xs mt-1 font-medium">{{ form.errors.result_description }}</div>
-            </div>
-
-            <!-- Progress -->
-            <div>
-                 <label class="block text-sm font-bold text-gray-700 mb-2">Progress</label>
-                 <select v-model="form.progress" required
-                    class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm bg-white shadow-sm cursor-pointer"
-                 >
-                    <option value="" disabled>Select Progress</option>
-                    <option v-for="opt in progressOptions" :key="opt" :value="opt">{{ opt }}</option>
-                 </select>
-                 <div v-if="form.errors.progress" class="text-red-500 text-xs mt-1 font-medium">{{ form.errors.progress }}</div>
+                 <!-- PIC Position -->
+                <div>
+                     <label class="block text-sm font-bold text-gray-700 mb-2">PIC Position</label>
+                     <input v-model="form.position" type="text" required
+                        class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm shadow-sm placeholder:text-gray-400"
+                        placeholder="Enter position"
+                     />
+                     <div v-if="form.errors.position" class="text-red-500 text-xs mt-1 font-medium">{{ form.errors.position }}</div>
+                </div>
             </div>
 
             <!-- Goal Achievement -->

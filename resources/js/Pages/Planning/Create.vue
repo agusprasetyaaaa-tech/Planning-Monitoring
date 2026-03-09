@@ -81,7 +81,7 @@ const minPlanningDate = computed(() => {
 
 const maxPlanningDate = computed(() => {
     const d = new Date();
-    d.setDate(d.getDate() + 14);
+    d.setDate(d.getDate() + 365); // Far future (1 year)
     return d.toISOString().split('T')[0];
 });
 

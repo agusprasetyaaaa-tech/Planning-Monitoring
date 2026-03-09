@@ -110,7 +110,7 @@ onMounted(() => {
                 <!-- Left Indicator Bar -->
                 <div v-if="isActive.dashboard" class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-10 bg-emerald-500 rounded-r-full z-10"></div>
                  <Link :href="route('dashboard')" class="relative flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group ml-5"
-                    :class="[isActive.dashboard ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
+                    :class="[isActive.dashboard ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
                     title="Dashboard">
                     <svg class="w-6 h-6 shrink-0 transition-colors" :class="isActive.dashboard ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -134,7 +134,7 @@ onMounted(() => {
                      <div class="relative">
                         <div v-if="isActive.products" class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-10 bg-emerald-500 rounded-r-full z-10"></div>
                         <Link :href="route('products.index')" class="relative flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group ml-5"
-                            :class="[isActive.products ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
+                            :class="[isActive.products ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
                             title="Products">
                             <svg class="w-6 h-6 shrink-0 transition-colors" :class="isActive.products ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -147,7 +147,7 @@ onMounted(() => {
                      <div class="relative">
                         <div v-if="isActive.customers" class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-10 bg-emerald-500 rounded-r-full z-10"></div>
                         <Link :href="route('customers.index')" class="relative flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group ml-5"
-                            :class="[isActive.customers ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
+                            :class="[isActive.customers ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
                             title="Customers">
                             <svg class="w-6 h-6 shrink-0 transition-colors" :class="isActive.customers ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
@@ -160,7 +160,7 @@ onMounted(() => {
                      <div class="relative">
                         <div v-if="isActive.teams" class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-10 bg-emerald-500 rounded-r-full z-10"></div>
                         <Link :href="route('teams.index')" class="relative flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group ml-5"
-                            :class="[isActive.teams ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
+                            :class="[isActive.teams ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
                             title="Teams">
                             <svg class="w-6 h-6 shrink-0 transition-colors" :class="isActive.teams ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -173,7 +173,7 @@ onMounted(() => {
                      <div class="relative">
                         <div v-if="isActive.users" class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-10 bg-emerald-500 rounded-r-full z-10"></div>
                         <Link :href="route('users.index')" class="relative flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group ml-5"
-                            :class="[isActive.users ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
+                            :class="[isActive.users ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
                             title="Users">
                             <svg class="w-6 h-6 shrink-0 transition-colors" :class="isActive.users ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -186,7 +186,7 @@ onMounted(() => {
                      <div class="relative">
                         <div v-if="isActive.roles" class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-10 bg-emerald-500 rounded-r-full z-10"></div>
                         <Link :href="route('roles.index')" class="relative flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group ml-5"
-                            :class="[isActive.roles ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
+                            :class="[isActive.roles ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
                             title="Roles">
                             <svg class="w-6 h-6 shrink-0 transition-colors" :class="isActive.roles ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -215,7 +215,7 @@ onMounted(() => {
                      <div class="relative">
                         <div v-if="isActive.security" class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-10 bg-emerald-500 rounded-r-full z-10"></div>
                         <Link :href="route('security.index')" class="relative flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group ml-5"
-                            :class="[isActive.security ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
+                            :class="[isActive.security ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
                             title="Security">
                             <svg class="w-6 h-6 shrink-0 transition-colors" :class="isActive.security ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -228,7 +228,7 @@ onMounted(() => {
                      <div class="relative">
                         <div v-if="isActive.databaseBackup" class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-10 bg-emerald-500 rounded-r-full z-10"></div>
                         <Link :href="route('settings.backup.index')" class="relative flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group ml-5"
-                            :class="[isActive.databaseBackup ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
+                            :class="[isActive.databaseBackup ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
                             title="Database Backup">
                             <svg class="w-6 h-6 shrink-0 transition-colors" :class="isActive.databaseBackup ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
@@ -241,7 +241,7 @@ onMounted(() => {
                      <div class="relative">
                         <div v-if="isActive.emailSettings" class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-10 bg-emerald-500 rounded-r-full z-10"></div>
                         <Link :href="route('settings.email.index')" class="relative flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group ml-5"
-                            :class="[isActive.emailSettings ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
+                            :class="[isActive.emailSettings ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
                             title="Email Settings">
                             <svg class="w-6 h-6 shrink-0 transition-colors" :class="isActive.emailSettings ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
@@ -267,7 +267,7 @@ onMounted(() => {
                      <div class="relative">
                         <div v-if="isActive.dailyReport" class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-10 bg-emerald-500 rounded-r-full z-10"></div>
                         <Link :href="route('daily-report.index')" class="relative flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group ml-5"
-                            :class="[isActive.dailyReport ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
+                            :class="[isActive.dailyReport ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
                             title="Daily Report">
                             <svg class="w-6 h-6 shrink-0 transition-colors" :class="isActive.dailyReport ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -280,7 +280,7 @@ onMounted(() => {
                      <div class="relative">
                         <div v-if="isActive.planning" class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-10 bg-emerald-500 rounded-r-full z-10"></div>
                         <Link :href="route('planning.index')" class="relative flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group ml-5"
-                            :class="[isActive.planning ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
+                            :class="[isActive.planning ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
                             title="Planning">
                             <svg class="w-6 h-6 shrink-0 transition-colors" :class="isActive.planning ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -293,7 +293,7 @@ onMounted(() => {
                      <div class="relative">
                         <div v-if="isActive.planningReport" class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-10 bg-emerald-500 rounded-r-full z-10"></div>
                         <Link :href="route('planning-report.index')" class="relative flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group ml-5"
-                            :class="[isActive.planningReport ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
+                            :class="[isActive.planningReport ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
                             title="Planning Report">
                             <svg class="w-6 h-6 shrink-0 transition-colors" :class="isActive.planningReport ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -306,7 +306,7 @@ onMounted(() => {
                      <div class="relative">
                         <div v-if="isActive.timeSettings" class="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-10 bg-emerald-500 rounded-r-full z-10"></div>
                         <Link :href="route('time-settings.index')" class="relative flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all duration-200 group ml-5"
-                            :class="[isActive.timeSettings ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200/50' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
+                            :class="[isActive.timeSettings ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900', isCollapsed ? 'justify-center ml-0' : '']"
                             title="Time Management">
                             <svg class="w-6 h-6 shrink-0 transition-colors" :class="isActive.timeSettings ? 'text-white' : 'text-gray-400 group-hover:text-gray-600'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />

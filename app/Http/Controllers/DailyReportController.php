@@ -12,6 +12,8 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Exports\DailyReportExport;
+use App\Exports\DailyReportTemplate;
+use App\Imports\DailyReportsImport;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -109,7 +111,18 @@ class DailyReportController extends Controller
         // Get customers and users for filters
         $customersQuery = Customer::orderBy('company_name');
         if (!$user->hasRole(['Super Admin', 'BOD', 'Board of Director'])) {
-            $customersQuery->where('marketing_sales_id', $user->id);
+            if ($user->hasRole('Manager')) {
+                $managedTeam = Team::where('manager_id', $user->id)->first();
+                if ($managedTeam) {
+                    $memberIds = $managedTeam->members()->pluck('id')->toArray();
+                    $memberIds[] = $user->id;
+                    $customersQuery->whereIn('marketing_sales_id', $memberIds);
+                } else {
+                    $customersQuery->where('marketing_sales_id', $user->id);
+                }
+            } else {
+                $customersQuery->where('marketing_sales_id', $user->id);
+            }
         }
 
         $usersQuery = User::orderBy('name');
@@ -152,7 +165,7 @@ class DailyReportController extends Controller
         ]);
 
         $userId = Auth::id();
-        if (Auth::user()->hasRole('Super Admin') && $request->user_id) {
+        if (Auth::user()->hasRole(['Super Admin', 'Manager']) && $request->user_id) {
             $userId = $request->user_id;
         }
 
@@ -195,7 +208,7 @@ class DailyReportController extends Controller
         ]);
 
         $userId = $dailyReport->user_id;
-        if (Auth::user()->hasRole('Super Admin') && $request->user_id) {
+        if (Auth::user()->hasRole(['Super Admin', 'Manager']) && $request->user_id) {
             $userId = $request->user_id;
         }
 
@@ -328,5 +341,48 @@ class DailyReportController extends Controller
             ->setPaper('a4', 'landscape');
 
         return $pdf->download('daily-report-' . now()->format('Y-m-d-His') . '.pdf');
+    }
+
+    /**
+     * Download import template
+     */
+    public function template()
+    {
+        return Excel::download(new DailyReportTemplate, 'daily_activities_import_template.xlsx');
+    }
+
+    /**
+     * Import daily reports from Excel
+     */
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|mimes:xlsx,xls|max:5120'
+        ]);
+
+        try {
+            $userId = Auth::id();
+
+            // If Super Admin or Manager, allow importing on behalf of another user
+            if (Auth::user()->hasRole(['Super Admin', 'Manager']) && $request->user_id) {
+                $userId = $request->user_id;
+            }
+
+            $import = new DailyReportsImport($userId);
+            Excel::import($import, $request->file('file'));
+
+            $errors = $import->getErrors();
+
+            if (count($errors) > 0) {
+                return redirect()->route('daily-report.index')
+                    ->with('success', 'Import completed with some warnings.')
+                    ->with('import_errors', $errors);
+            }
+
+            return redirect()->route('daily-report.index')
+                ->with('success', 'Daily activities imported successfully!');
+        } catch (\Exception $e) {
+            return back()->withErrors(['file' => 'Import failed: ' . $e->getMessage()]);
+        }
     }
 }

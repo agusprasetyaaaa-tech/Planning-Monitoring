@@ -1,8 +1,10 @@
 <script setup>
 import NexusLayout from '@/Layouts/NexusLayout.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, watch, computed } from 'vue';
 import { debounce, throttle } from 'lodash';
+import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue';
+import Toast from '@/Components/Toast.vue';
 
 defineOptions({ layout: NexusLayout });
 
@@ -11,9 +13,31 @@ const props = defineProps({
     filters: Object,
     timeSettings: Object,
     customers: Array,
-    users: Array,
     user_roles: Array,
 });
+
+const page = usePage();
+
+// Toast state
+const toast = ref({
+    show: false,
+    message: '',
+    type: 'success'
+});
+
+const showToast = (message, type = 'success') => {
+    toast.value = { show: true, message, type };
+};
+
+// Listen for flash messages from Inertia
+watch(() => page.props.flash, (flash) => {
+    if (flash?.success) {
+        showToast(flash.success, 'success');
+    }
+    if (flash?.error) {
+        showToast(flash.error, 'error');
+    }
+}, { immediate: true, deep: true });
 
 const search = ref(props.filters?.search || '');
 const customer_id = ref(props.filters?.customer_id || '');
@@ -27,6 +51,7 @@ const isLoading = ref(false);
 
 const selectedIds = ref([]);
 const selectAll = ref(false);
+const isBulkDeleteModalOpen = ref(false);
 
 // Tab definitions
 const tabs = [
@@ -428,16 +453,21 @@ const toggleSelectAll = () => {
 };
 
 const deleteSelected = () => {
-    if (confirm('Are you sure you want to delete the selected plans?')) {
-        router.delete(route('planning-report.bulk-destroy'), {
-            data: { ids: selectedIds.value },
-            preserveScroll: true,
-            onSuccess: () => {
-                selectedIds.value = [];
-                selectAll.value = false;
-            }
-        });
+    if (selectedIds.value.length > 0) {
+        isBulkDeleteModalOpen.value = true;
     }
+};
+
+const confirmBulkDelete = () => {
+    router.delete(route('planning-report.bulk-destroy'), {
+        data: { ids: selectedIds.value },
+        preserveScroll: true,
+        onSuccess: () => {
+            selectedIds.value = [];
+            selectAll.value = false;
+            isBulkDeleteModalOpen.value = false;
+        }
+    });
 };
 
 const getProgressData = (progressValue) => {
@@ -478,6 +508,28 @@ const getProgressData = (progressValue) => {
         text: `${numericValue}%`,
         isClosing: isClosing
     };
+};
+
+const getActivityBadgeClass = (code) => {
+    const base = "inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider border shadow-sm ";
+    if (!code) return base + "bg-gray-100 text-gray-600 border-gray-200";
+    
+    const prefix = code.toUpperCase();
+    
+    if (prefix.startsWith('V')) return base + "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200";
+    if (prefix.startsWith('OM')) return base + "bg-rose-50 text-rose-700 border-rose-200";
+    if (prefix.startsWith('E')) return base + "bg-amber-50 text-amber-700 border-amber-200";
+    if (prefix.startsWith('CL')) return base + "bg-gray-900 text-white border-gray-800";
+    if (prefix.startsWith('C')) return base + "bg-emerald-50 text-emerald-700 border-emerald-200";
+    if (prefix.startsWith('S')) return base + "bg-violet-50 text-violet-700 border-violet-200";
+    if (prefix.startsWith('AT')) return base + "bg-cyan-50 text-cyan-700 border-cyan-200";
+    if (prefix.startsWith('PP')) return base + "bg-orange-50 text-orange-700 border-orange-200";
+    if (prefix.startsWith('PR')) return base + "bg-sky-50 text-sky-700 border-sky-200";
+    if (prefix.startsWith('N')) return base + "bg-pink-50 text-pink-700 border-pink-200";
+    if (prefix.startsWith('EM')) return base + "bg-rose-50 text-rose-700 border-rose-200";
+    if (prefix.startsWith('O')) return base + "bg-indigo-50 text-indigo-700 border-indigo-200";
+
+    return base + "bg-gray-100 text-gray-600 border-gray-200";
 };
 </script>
 
@@ -697,7 +749,7 @@ const getProgressData = (progressValue) => {
                         <div class="flex flex-col gap-1">
                             <span class="text-[10px] uppercase font-bold text-gray-400">Activity</span>
                             <div class="flex items-center gap-2">
-                                <span :class="['px-2.5 py-1.5 rounded-lg text-xs font-bold shadow-sm', getBadgeColor(plan)]">
+                                <span :class="getActivityBadgeClass(plan.activity_code)">
                                     {{ plan.activity_code }}
                                 </span>
                             </div>
@@ -796,7 +848,7 @@ const getProgressData = (progressValue) => {
                                 </td>
                                 <td v-if="columns.find(c => c.key === 'no').visible" class="px-3 py-4 whitespace-nowrap text-xs text-gray-500">{{ (plans.from || 1) + index }}</td>
                                 <td v-if="columns.find(c => c.key === 'activity_code').visible" class="px-3 py-4 whitespace-nowrap text-xs text-gray-900 font-medium">
-                                    <span :class="['px-2 py-1 rounded-md text-xs font-semibold', getBadgeColor(plan)]">
+                                    <span :class="getActivityBadgeClass(plan.activity_code)">
                                         {{ plan.activity_code }}
                                     </span>
                                 </td>
@@ -910,5 +962,23 @@ const getProgressData = (progressValue) => {
                 </div>
             </div>
         </div>
+
+        <!-- Bulk Delete Confirmation Modal -->
+        <ConfirmDeleteModal 
+            :show="isBulkDeleteModalOpen"
+            title="Delete Selected Plans"
+            :content="`Are you sure you want to delete ${selectedIds.length} selected planning reports? This action cannot be undone.`"
+            @close="isBulkDeleteModalOpen = false"
+            @confirm="confirmBulkDelete"
+        />
+
+        <!-- Toast Notifications -->
+        <Toast
+            :show="toast.show"
+            :message="toast.message"
+            :type="toast.type"
+            @close="toast.show = false"
+        />
     </div>
 </template>
+```

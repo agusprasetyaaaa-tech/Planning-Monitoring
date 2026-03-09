@@ -127,6 +127,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/daily-report', [DailyReportController::class, 'store'])->name('daily-report.store');
     Route::put('/daily-report/{daily_report}', [DailyReportController::class, 'update'])->name('daily-report.update');
     Route::delete('/daily-report/{daily_report}', [DailyReportController::class, 'destroy'])->name('daily-report.destroy');
+    Route::get('/daily-report/import-template', [DailyReportController::class, 'template'])->name('daily-report.import-template');
+    Route::post('/daily-report/import', [DailyReportController::class, 'import'])->name('daily-report.import');
 
     // Time Settings
     Route::get('/time-settings', [TimeSettingController::class, 'index'])->name('time-settings.index');

@@ -72,7 +72,17 @@ class SecurityCheck
             abort(429, 'Too many requests. Please try again in ' . $seconds . ' seconds.');
         }
 
-        RateLimiter::hit($key, 60); // 60 seconds decay
+        try {
+            RateLimiter::hit($key, 60); // 60 seconds decay
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Check for deadlock (1213) or lock wait timeout (1205)
+            // SQLSTATE[40001] is the PDO code for serialization failure/deadlock
+            if (in_array($e->getCode(), ['40001']) || str_contains($e->getMessage(), '1213') || str_contains($e->getMessage(), '1205')) {
+                Log::warning("SecurityCheck: Deadlock detected in RateLimiter for IP {$ip}. Skipping hit count.");
+            } else {
+                throw $e;
+            }
+        }
 
         return $next($request);
     }
