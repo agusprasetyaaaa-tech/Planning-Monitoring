@@ -49,10 +49,12 @@ const closePlanningModal = () => {
 const showReportModal = ref(false);
 const selectedReportPlan = ref(null);
 const selectedReportCompanyName = ref('');
+const selectedReportIsLate = ref(false);
 
-const openReportModal = (plan, companyName = '') => {
+const openReportModal = (plan, companyName = '', isLate = false) => {
     selectedReportPlan.value = plan;
     selectedReportCompanyName.value = companyName;
+    selectedReportIsLate.value = isLate;
     showReportModal.value = true;
 };
 
@@ -61,6 +63,7 @@ const closeReportModal = () => {
     setTimeout(() => {
         selectedReportPlan.value = null;
         selectedReportCompanyName.value = '';
+        selectedReportIsLate.value = false;
     }, 200);
 };
 
@@ -121,7 +124,7 @@ const openRevisionModal = (plan) => {
     if (plan.report) {
          revisionForm.has_report = true;
          // Use existing execution date or Today
-         revisionForm.execution_date = plan.report.execution_date ? plan.report.execution_date.split('T')[0] : new Date().toISOString().split('T')[0];
+         revisionForm.execution_date = formatDateForInput(plan.report.execution_date) || getTodayForInput();
          revisionForm.result_description = plan.report.result_description || '';
          revisionForm.location = plan.report.location || '';
          revisionForm.pic = plan.report.pic || '';
@@ -135,7 +138,7 @@ const openRevisionModal = (plan) => {
          revisionForm.next_activity_type = '';
     } else {
          revisionForm.has_report = false;
-         revisionForm.execution_date = new Date().toISOString().split('T')[0]; // Default to Today
+         revisionForm.execution_date = getTodayForInput(); // Default to Today
          revisionForm.result_description = '';
          revisionForm.location = '';
          revisionForm.pic = '';
@@ -155,6 +158,48 @@ const closeRevisionModal = () => {
     showRevisionModal.value = false;
     revisionForm.reset();
     revisionPlan.value = null;
+};
+
+// --- RESCHEDULE LOGIC ---
+const showRescheduleModal = ref(false);
+const reschedulePlan = ref(null);
+const rescheduleForm = useForm({
+    planning_date: '',
+    activity_type: '',
+    reason: '',
+});
+
+const minRescheduleDate = computed(() => {
+    return getTodayForInput();
+});
+
+const openRescheduleModal = (plan, customer = null) => {
+    reschedulePlan.value = plan;
+    if (customer) {
+        selectedCustomer.value = customer;
+    }
+    rescheduleForm.clearErrors();
+    rescheduleForm.planning_date = formatDateForInput(plan.planning_date);
+    rescheduleForm.activity_type = plan.activity_type || '';
+    rescheduleForm.reason = '';
+    showRescheduleModal.value = true;
+    // Don't closeDetail if we just opened it to get context
+};
+
+const closeRescheduleModal = () => {
+    showRescheduleModal.value = false;
+    rescheduleForm.reset();
+    reschedulePlan.value = null;
+};
+
+const submitReschedule = () => {
+    if (!reschedulePlan.value) return;
+    rescheduleForm.patch(route('planning.reschedule', reschedulePlan.value.id), {
+        onSuccess: () => {
+            closeRescheduleModal();
+        },
+        preserveScroll: true,
+    });
 };
 
 const submitRevision = () => {
@@ -273,7 +318,10 @@ const filteredUsers = computed(() => {
     if (!filterTeam.value) {
         return props.users;
     }
-    return props.users.filter(user => user.team_id == filterTeam.value);
+    return props.users.filter(user => 
+        user.team_id == filterTeam.value || 
+        (user.managed_teams_ids && user.managed_teams_ids.includes(parseInt(filterTeam.value)))
+    );
 });
 
 const updateParams = debounce(() => {
@@ -347,6 +395,28 @@ const getCurrentTime = () => {
         return new Date(props.currentSimulatedTime).getTime();
     }
     return new Date().getTime();
+};
+
+// Helper: Format date for input field (YYYY-MM-DD) strictly in Asia/Jakarta (WIB)
+const formatDateForInput = (dateInput) => {
+    if (!dateInput) return '';
+    try {
+        const date = new Date(dateInput);
+        // Using 'en-CA' locale as it defaults to YYYY-MM-DD format
+        return new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Jakarta',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).format(date);
+    } catch (e) {
+        return '';
+    }
+};
+
+// Helper: Get today's date for input (respecting current simulated time and Jakarta timezone)
+const getTodayForInput = () => {
+    return formatDateForInput(getCurrentTime());
 };
 
 const getPlanningStatus = (customer) => {
@@ -449,8 +519,8 @@ const getPlanningStatus = (customer) => {
         // Plans scheduled for future dates should NOT trigger warning/expiry
         // They stay as static RED (created) until their planning_date arrives
         // =========================================================================
-        const planningDateStr = plan.planning_date ? plan.planning_date.split('T')[0] : null;
-        const todayStr = new Date(now).toISOString().split('T')[0];
+        const planningDateStr = formatDateForInput(plan.planning_date);
+        const todayStr = getTodayForInput();
         
         if (planningDateStr && planningDateStr > todayStr) {
             // Plan is for a FUTURE date - no warning/expiry applies yet
@@ -550,6 +620,7 @@ const getPlanningStatus = (customer) => {
     if (isWaitingApproval) {
         // Stay GREEN (static) - user has completed their task
         // Manager/BOD needs to review, not the user's responsibility
+        if (plan.manager_status === 'approved') return 'approved';
         return 'reported'; // HIJAU DIAM
     }
     
@@ -583,8 +654,8 @@ const getBlinkStyle = (source) => {
     
     // If source is a Plan object, check if planning_date is in the future
     if (typeof source === 'object' && source.planning_date) {
-        const planningDateStr = source.planning_date.split('T')[0];
-        const todayStr = new Date(now).toISOString().split('T')[0];
+        const planningDateStr = formatDateForInput(source.planning_date);
+        const todayStr = getTodayForInput();
         
         // If planning_date is in the future, no blinking animation
         if (planningDateStr > todayStr) {
@@ -1232,7 +1303,7 @@ const handleNoPlanEscalate = (customer) => {
     router.post(route('planning.store'), {
         customer_id: customer.id,
         product_id: productId,
-        planning_date: new Date().toISOString().split('T')[0],
+        planning_date: getTodayForInput(),
         activity_type: 'ESCALATION',
         description: 'Manager Escalation Reminder',
         manager_status: 'escalated'
@@ -1567,14 +1638,12 @@ const getMonitoringStatusCode = (status) => {
 };
 
 // --- Revision Date Logic (14 Days Offset) ---
-const todayStr = props.currentSimulatedTime 
-    ? props.currentSimulatedTime.split('T')[0] 
-    : new Date().toISOString().split('T')[0];
+const todayStr = getTodayForInput();
 
 const revisionMaxPlanningDate = computed(() => {
-    const d = new Date();
+    const d = new Date(getCurrentTime());
     d.setDate(d.getDate() + 365); // Far future (1 year)
-    return d.toISOString().split('T')[0];
+    return formatDateForInput(d);
 });
 
 const revisionMinPlanningDate = computed(() => {
@@ -1693,7 +1762,7 @@ const formatDate = (dateStr) => {
                             <!-- Team & User Filters -->
                             <div v-if="canViewFilters" class="flex items-center gap-2">
                                 <!-- Team Filter -->
-                                <select v-if="isSuperAdmin || (user_roles && user_roles.includes('BOD'))" v-model="filterTeam" class="block rounded-lg border-gray-300 py-2 pl-3 pr-9 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 bg-white transition-all">
+                                <select v-if="isSuperAdmin || isBOD || (user_roles && user_roles.includes('Manager'))" v-model="filterTeam" class="block rounded-lg border-gray-300 py-2 pl-3 pr-9 text-sm text-gray-900 shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 bg-white transition-all">
                                     <option value="">All Teams</option>
                                     <option v-for="team in teams" :key="team.id" :value="team.id">{{ team.name }}</option>
                                 </select>
@@ -1818,14 +1887,13 @@ const formatDate = (dateStr) => {
                                               'text-gray-800 font-bold': getPlanningStatus(customer) === 'closed',
                                               'text-gray-500': ['created', 'reported', 'warning'].includes(getPlanningStatus(customer))
                                           }">
-                                        {{ 
-                                            getPlanningStatus(customer) === 'closed' ? 'Closing' :
-                                            getPlanningStatus(customer) === 'approved' ? 'Approved' : 
-                                            (['rejected_final', 'rejected_warning'].includes(getPlanningStatus(customer)) ? 'Rejected' :
-                                            (['expired', 'expired_warning'].includes(getPlanningStatus(customer)) ? 'Expired' :
-                                            formatDate(customer.latest_plan.planning_date)))
-                                        }}
-                                    </span>
+                                         {{ 
+                                             getPlanningStatus(customer) === 'closed' ? 'Closing' :
+                                             (['rejected_final', 'rejected_warning'].includes(getPlanningStatus(customer)) ? 'Rejected' :
+                                             (['expired', 'expired_warning'].includes(getPlanningStatus(customer)) ? 'Expired' :
+                                             formatDate(customer.latest_plan.report?.execution_date || customer.latest_plan.planning_date)))
+                                         }}
+                                     </span>
                                 </div>
                              </div>
 
@@ -1856,8 +1924,15 @@ const formatDate = (dateStr) => {
                                         <span v-if="(getControlStatus(customer) === 'need_review' || (getControlStatus(customer) === 'pending' && getPlanningStatus(customer) === 'reported')) && customer.latest_plan.activity_type !== 'ESCALATION'" class="text-[9px] text-gray-500 font-medium mt-1 text-center whitespace-nowrap">
                                             Need Review
                                         </span>
-                                        <!-- Only Show Date if manager has actually taken action (approved/rejected/escalated but NOT need_review) -->
-                                        <span v-else-if="customer.latest_plan.manager_status && customer.latest_plan.manager_status !== 'pending' && getControlStatus(customer) !== 'need_review'" class="text-[9px] text-gray-500 font-medium mt-1 text-center whitespace-nowrap">
+                                        <!-- Show Date if manager has actually taken action (Approved/Rejected/Escalated) -->
+                                        <span v-else-if="customer.latest_plan.manager_status && customer.latest_plan.manager_status !== 'pending' && getControlStatus(customer) !== 'need_review'" 
+                                              class="text-[9px] font-medium mt-1 text-center whitespace-nowrap"
+                                              :class="{
+                                                  'text-emerald-600': getControlStatus(customer) === 'approved',
+                                                  'text-red-500': getControlStatus(customer) === 'rejected',
+                                                  'text-amber-600': getControlStatus(customer) === 'escalated',
+                                                  'text-gray-500': true
+                                              }">
                                             {{ formatDate(customer.latest_plan.manager_reviewed_at || customer.latest_plan.updated_at) }}
                                         </span>
                                     </template>
@@ -1896,7 +1971,13 @@ const formatDate = (dateStr) => {
                                             Need Review
                                         </span>
                                         <!-- BOD Date -->
-                                        <span v-else-if="customer.latest_plan.bod_status && customer.latest_plan.bod_status !== 'pending' && customer.latest_plan.bod_reviewed_at && getPlanningStatus(customer) !== 'expired' && getPlanningStatus(customer) !== 'expired_warning'" class="text-[9px] text-gray-500 font-medium mt-1 text-center whitespace-nowrap">
+                                        <span v-else-if="customer.latest_plan.bod_status && customer.latest_plan.bod_status !== 'pending' && customer.latest_plan.bod_reviewed_at && getPlanningStatus(customer) !== 'expired' && getPlanningStatus(customer) !== 'expired_warning'" 
+                                              class="text-[9px] font-medium mt-1 text-center whitespace-nowrap"
+                                              :class="{
+                                                  'text-emerald-600': getMonitoringStatus(customer) === 'success',
+                                                  'text-red-500': getMonitoringStatus(customer) === 'failed',
+                                                  'text-gray-500': true
+                                              }">
                                             {{ formatDate(customer.latest_plan.bod_reviewed_at) }}
                                         </span>
                                     </template>
@@ -2030,7 +2111,7 @@ const formatDate = (dateStr) => {
 
                              <!-- Late Report (Warning/Expired) -->
                             <button v-else-if="customer.latest_plan && (getPlanningStatus(customer) === 'warning' || getPlanningStatus(customer) === 'expired' || getPlanningStatus(customer) === 'expired_warning') && canCreateContent(customer) && customer.latest_plan.activity_type !== 'ESCALATION' && customer.latest_plan.status === 'created'" 
-                                  @click="openReportModal(customer.latest_plan, customer.company_name)"
+                                  @click="openReportModal(customer.latest_plan, customer.company_name, true)"
                                   class="w-full flex justify-center items-center gap-2 text-center text-sm font-bold text-white bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 active:scale-[0.98] py-3.5 rounded-xl shadow-lg shadow-amber-200/50 ring-1 ring-amber-500/20 transition-all">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 opacity-90">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
@@ -2045,7 +2126,17 @@ const formatDate = (dateStr) => {
                                 <svg class="w-5 h-5 opacity-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                                 </svg>
-                                Create Report
+                                    Create Report
+                            </button>
+
+                            <!-- Reschedule (Mobile) -->
+                            <button v-if="customer.latest_plan && customer.latest_plan.status === 'created' && canCreateContent(customer) && customer.latest_plan.activity_type !== 'ESCALATION'" 
+                                  @click="openRescheduleModal(customer.latest_plan, customer)"
+                                  class="w-full mt-2 flex justify-center items-center gap-2 text-center text-sm font-bold text-white bg-amber-500 hover:bg-amber-600 active:scale-[0.98] py-3.5 rounded-xl transition-all shadow-md shadow-amber-200/50">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 opacity-90">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                                </svg>
+                                Reschedule Plan
                             </button>
 
                             <!-- Wait Day Restriction (Mobile) -->
@@ -2069,7 +2160,7 @@ const formatDate = (dateStr) => {
                                   @click="openPlanningModal(customer)"
                                   class="w-full flex justify-center items-center gap-2 text-center text-sm font-bold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 active:scale-[0.98] py-3.5 rounded-xl shadow-lg shadow-emerald-200/50 ring-1 ring-emerald-500/20 transition-all">
                                 <svg class="h-5 w-5 opacity-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4.5v15m7.5-7.5h-15" />
                                 </svg>
                                 Create Plan
                             </button>
@@ -2174,12 +2265,8 @@ const formatDate = (dateStr) => {
                                     >
                                         {{ customer.latest_plan.activity_code }}
                                     </div>
-                                        <!-- Approved: Show 'Approved' text -->
-                                        <span v-if="getPlanningStatus(customer) === 'approved'" class="text-[10px] text-emerald-600 block mt-1 font-medium">
-                                        Approved
-                                    </span>
-                                    <!-- Closed: Show 'Closing' text -->
-                                    <span v-else-if="getPlanningStatus(customer) === 'closed'" class="text-[9px] font-bold text-gray-900">
+                                    <!-- Text Below Badge -->
+                                    <span v-if="getPlanningStatus(customer) === 'closed'" class="text-[9px] font-bold text-gray-900">
                                         Closing
                                     </span>
                                     <!-- Rejected: Show 'Rejected' text -->
@@ -2187,19 +2274,18 @@ const formatDate = (dateStr) => {
                                           class="text-[10px] text-red-500 block mt-1 font-medium">
                                         Rejected
                                     </span>
-                                    <!-- Expired: Show 'Expired' text (only for expired/expired_warning, NOT warning) -->
+                                    <!-- Expired: Show 'Expired' text -->
                                     <span v-else-if="['expired', 'expired_warning'].includes(getPlanningStatus(customer))" 
                                           class="text-[10px] text-red-500 block mt-1 font-medium">
                                         Expired
                                     </span>
-                                    <!-- Warning: No text, just blinking badge -->
-                                    <!-- Warning: Blinking badge + Date -->
-                                    <!-- Created/Reported/Warning: Show PLANNING DATE only (NOT for ESCALATION plans) -->
+                                    <!-- Date for normal/reported/approved plans -->
                                     <span v-else-if="customer.latest_plan && customer.latest_plan.activity_type !== 'ESCALATION'" 
-                                          class="text-[10px] text-gray-500 block mt-1 font-medium">
-                                        {{ formatDate(customer.latest_plan.planning_date) }}
+                                          class="text-[10px] block mt-1 font-medium"
+                                          :class="getPlanningStatus(customer) === 'approved' ? 'text-emerald-600' : 'text-gray-500'">
+                                        {{ formatDate(customer.latest_plan.report?.execution_date || customer.latest_plan.planning_date) }}
                                     </span>
-                                </div>
+                               </div>
                             </td>
 
                             <!-- Control Status (Display Only) -->
@@ -2233,11 +2319,18 @@ const formatDate = (dateStr) => {
                                         
                                         <!-- Text below badge -->
                                         <!-- If Need Review (Escalated + Reported OR Pending + Reported) -> Show 'Need Review' -->
-                                        <span v-if="getControlStatus(customer) === 'need_review' || (getControlStatus(customer) === 'pending' && getPlanningStatus(customer) === 'reported')" class="text-[10px] text-gray-500 font-medium">
+                                        <span v-if="getControlStatus(customer) === 'need_review' || (getControlStatus(customer) === 'pending' && getPlanningStatus(customer) === 'reported')" class="text-[10px] text-gray-500 font-medium mt-1">
                                             Need Review
                                         </span>
-                                        <!-- Only Show Date if manager has actually taken action (approved/rejected/escalated but NOT need_review) -->
-                                        <span v-else-if="customer.latest_plan.manager_status && customer.latest_plan.manager_status !== 'pending' && getControlStatus(customer) !== 'need_review'" class="text-[10px] text-gray-500 font-medium">
+                                        <!-- Manager Review Date (Approved/Rejected/Escalated) -->
+                                        <span v-else-if="customer.latest_plan.manager_status && customer.latest_plan.manager_status !== 'pending' && getControlStatus(customer) !== 'need_review'" 
+                                              class="text-[10px] font-medium mt-1"
+                                              :class="{
+                                                  'text-emerald-600': getControlStatus(customer) === 'approved',
+                                                  'text-red-500': getControlStatus(customer) === 'rejected',
+                                                  'text-amber-600': getControlStatus(customer) === 'escalated',
+                                                  'text-gray-500': true
+                                              }">
                                             {{ formatDate(customer.latest_plan.manager_reviewed_at || customer.latest_plan.updated_at) }}
                                         </span>
                                     </template>
@@ -2278,7 +2371,13 @@ const formatDate = (dateStr) => {
                                             Need Review
                                         </span>
                                         <!-- Show Date ONLY if BOD has taken action (Strict Check) -->
-                                        <span v-else-if="customer.latest_plan.bod_status && customer.latest_plan.bod_status !== 'pending'" class="text-[10px] text-gray-500 font-medium">
+                                        <span v-else-if="customer.latest_plan.bod_status && customer.latest_plan.bod_status !== 'pending'" 
+                                              class="text-[10px] font-medium mt-1"
+                                              :class="{
+                                                  'text-emerald-600': getMonitoringStatus(customer) === 'success',
+                                                  'text-red-500': getMonitoringStatus(customer) === 'failed',
+                                                  'text-gray-500': true
+                                              }">
                                             {{ formatDate(customer.latest_plan.bod_reviewed_at || customer.latest_plan.updated_at) }}
                                         </span>
                                     </template>
@@ -2446,8 +2545,8 @@ const formatDate = (dateStr) => {
                                         <!-- 1. WARNING / EXPIRED -> LATE REPORT -->
                                         <!-- Allow user to submit a late report for plans that have passed warning threshold -->
                                         <button v-if="(getPlanningStatus(customer) === 'warning' || getPlanningStatus(customer) === 'expired' || getPlanningStatus(customer) === 'expired_warning') && customer.latest_plan.activity_type !== 'ESCALATION' && customer.latest_plan.status === 'created'" 
-                                            @click="openReportModal(customer.latest_plan, customer.company_name)"
-                                            class="w-32 justify-center text-xs font-semibold text-white bg-amber-500 hover:bg-amber-600 hover:shadow-md px-3 py-1.5 rounded-lg shadow-sm transition-all whitespace-nowrap flex items-center gap-1.5 mx-auto">
+                                            @click="openReportModal(customer.latest_plan, customer.company_name, true)"
+                                            class="w-32 justify-center text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 hover:shadow-md px-3 py-1.5 rounded-lg shadow-sm transition-all whitespace-nowrap flex items-center gap-1.5 mx-auto">
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                                             </svg>
@@ -2478,11 +2577,21 @@ const formatDate = (dateStr) => {
                                         <!-- Otherwise, if 'created' and date reached, Allow Report -->
                                         <button v-else-if="getPlanningStatus(customer) === 'created' && customer.latest_plan.activity_type !== 'ESCALATION'" 
                                             @click="openReportModal(customer.latest_plan, customer.company_name)"
-                                            class="w-32 justify-center text-xs font-semibold text-white bg-blue-500 hover:bg-blue-600 hover:shadow-md px-3 py-1.5 rounded-lg shadow-sm transition-all whitespace-nowrap flex items-center gap-1.5">
+                                            class="w-32 justify-center text-xs font-bold text-white bg-blue-500 hover:bg-blue-600 hover:shadow-md px-3 py-1.5 rounded-lg shadow-sm transition-all whitespace-nowrap flex items-center gap-1.5">
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                                             </svg>
                                             Create Report
+                                        </button>
+
+                                        <!-- 2.5 RESCHEDULE (Created but not reported) -->
+                                        <button v-if="customer.latest_plan.status === 'created' && customer.latest_plan.activity_type !== 'ESCALATION'" 
+                                            @click="openRescheduleModal(customer.latest_plan, customer)"
+                                            class="w-32 justify-center text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 hover:shadow-md px-3 py-1.5 rounded-lg shadow-sm transition-all whitespace-nowrap flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-amber-500/20 active:scale-[0.98]">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-3.5">
+                                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                                            </svg>
+                                            Reschedule
                                         </button>
                                         <!-- 3. REVISE PLAN (Manager/BOD Rejected) -->
                                         <button v-else-if="(customer.latest_plan.manager_status === 'rejected' || customer.latest_plan.bod_status === 'failed')"
@@ -2812,6 +2921,47 @@ const formatDate = (dateStr) => {
                                             </div>
                                             <!-- Review Actions (Inside Modal) -->
 
+
+                                            <!-- Reschedule History -->
+                                            <div v-if="plan.reschedules && plan.reschedules.length > 0" class="p-3 sm:p-4 border-t border-gray-100 bg-gray-50/30 md:col-span-2">
+                                                <h4 class="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2 mb-3">
+                                                    <svg class="h-3.5 w-3.5 sm:h-4 sm:w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                    </svg>
+                                                    Reschedule History
+                                                </h4>
+                                                <div class="space-y-3">
+                                                    <div v-for="reschedule in plan.reschedules" :key="reschedule.id" class="bg-white p-3 rounded-xl border border-gray-100 shadow-sm relative overflow-hidden">
+                                                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-gray-200"></div>
+                                                        <div class="flex items-center justify-between mb-2">
+                                                            <div class="flex items-center gap-2">
+                                                                <span class="text-[10px] font-bold text-gray-700">{{ reschedule.user?.name || 'User' }}</span>
+                                                                <span class="text-[9px] text-gray-400 font-medium">{{ formatDate(reschedule.created_at) }}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-2">
+                                                            <div>
+                                                                <label class="block text-[8px] text-gray-400 uppercase font-bold">From</label>
+                                                                <div class="flex flex-col gap-0.5">
+                                                                    <span class="text-[10px] font-medium text-gray-500 line-through">{{ formatDate(reschedule.old_planning_date) }}</span>
+                                                                    <span class="text-[10px] font-medium text-gray-500 line-through">{{ reschedule.old_activity_type }}</span>
+                                                                </div>
+                                                            </div>
+                                                            <div>
+                                                                <label class="block text-[8px] text-emerald-500 uppercase font-bold">To</label>
+                                                                <div class="flex flex-col gap-0.5">
+                                                                    <span class="text-[10px] font-bold text-emerald-600">{{ formatDate(reschedule.new_planning_date) }}</span>
+                                                                    <span class="text-[10px] font-bold text-emerald-600">{{ reschedule.new_activity_type }}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div class="bg-gray-50/50 p-2 rounded-lg border border-gray-100/50">
+                                                            <label class="block text-[8px] text-gray-400 uppercase font-bold mb-1">Reason</label>
+                                                            <p class="text-[10px] text-gray-600 italic leading-relaxed">"{{ reschedule.reason }}"</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
 
                                             <!-- Status Notes (Manager / BOD) - Moved to bottom for mobile, full width on desktop -->
                                             <div v-if="plan.status_logs && plan.status_logs.length > 0 && plan.status_logs.some(log => log.notes)" class="p-3 sm:p-4 space-y-3 border-t md:border-t-0 md:border-t border-gray-100 bg-amber-50/20 md:col-span-2">
@@ -3227,14 +3377,14 @@ const formatDate = (dateStr) => {
 
     <!-- Revision Modal -->
     <Modal :show="showRevisionModal" @close="closeRevisionModal" max-width="2xl" :noPadding="true">
-        <div class="px-4 py-4 sm:px-5 sm:py-4 bg-emerald-600 flex items-center justify-between rounded-t-lg">
+        <div class="px-4 py-4 sm:px-5 sm:py-4 bg-red-600 flex items-center justify-between rounded-t-lg">
              <div class="pr-8 sm:pr-0">
                 <h2 class="text-base sm:text-lg font-bold text-white leading-tight">Revise Plan</h2>
-                <p class="text-[9px] sm:text-xs text-emerald-100 italic" v-if="revisionPlan">
+                <p class="text-[9px] sm:text-xs text-red-100 italic" v-if="revisionPlan">
                     For: {{ selectedCustomer?.company_name }} | {{ revisionPlan.project_name || 'No Project' }}
                 </p>
              </div>
-             <button @click="closeRevisionModal" class="p-2 -mr-2 text-emerald-100 hover:text-white transition-colors rounded-full hover:bg-emerald-500/50">
+             <button @click="closeRevisionModal" class="p-2 -mr-2 text-red-100 hover:text-white transition-colors rounded-full hover:bg-red-500/50">
                  <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                      <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                  </svg>
@@ -3255,13 +3405,13 @@ const formatDate = (dateStr) => {
                             <!-- Date -->
                             <div>
                                 <label class="block text-xs font-bold text-gray-900 mb-2">Planning Date</label>
-                                <input v-model="revisionForm.planning_date" type="date" :min="revisionMinPlanningDate" :max="revisionMaxPlanningDate" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all text-sm shadow-sm font-medium text-gray-600">
+                                <input v-model="revisionForm.planning_date" type="date" :min="revisionMinPlanningDate" :max="revisionMaxPlanningDate" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all text-sm shadow-sm font-medium text-gray-600">
                                 <p v-if="revisionForm.errors.planning_date" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.planning_date }}</p>
                             </div>
                             <!-- Activity Type (New) -->
                             <div>
                                 <label class="block text-xs font-bold text-gray-900 mb-2">Activity Type</label>
-                                <select v-model="revisionForm.activity_type" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all text-sm bg-white shadow-sm cursor-pointer font-medium text-gray-600">
+                                <select v-model="revisionForm.activity_type" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all text-sm bg-white shadow-sm cursor-pointer font-medium text-gray-600">
                                      <option value="" disabled>Select Activity</option>
                                      <option v-for="type in activityTypes" :key="type" :value="type">{{ type }}</option>
                                 </select>
@@ -3271,7 +3421,7 @@ const formatDate = (dateStr) => {
                         <!-- Desc -->
                          <div>
                             <label class="block text-xs font-bold text-gray-900 mb-2">Description</label>
-                            <textarea v-model="revisionForm.description" rows="3" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all text-sm resize-none shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="Enter plan description..."></textarea>
+                            <textarea v-model="revisionForm.description" rows="3" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all text-sm resize-none shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="Enter plan description..."></textarea>
                             <p v-if="revisionForm.errors.description" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.description }}</p>
                         </div>
                     </div>
@@ -3305,7 +3455,7 @@ const formatDate = (dateStr) => {
                                       </div>
                                       <div>
                                          <label class="block text-xs font-bold text-gray-900 mb-2">Location</label>
-                                         <input v-model="revisionForm.location" type="text" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="e.g. Client Office">
+                                         <input v-model="revisionForm.location" type="text" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all text-sm shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="e.g. Client Office">
                                          <p v-if="revisionForm.errors.location" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.location }}</p>
                                       </div>
                                   </div>
@@ -3314,12 +3464,12 @@ const formatDate = (dateStr) => {
                                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                       <div>
                                          <label class="block text-xs font-bold text-gray-900 mb-2">Person In Charge</label>
-                                         <input v-model="revisionForm.pic" type="text" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="Person met">
+                                         <input v-model="revisionForm.pic" type="text" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all text-sm shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="Person met">
                                          <p v-if="revisionForm.errors.pic" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.pic }}</p>
                                       </div>
                                       <div>
                                          <label class="block text-xs font-bold text-gray-900 mb-2">PIC Position</label>
-                                         <input v-model="revisionForm.position" type="text" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="PIC Position">
+                                         <input v-model="revisionForm.position" type="text" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all text-sm shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="PIC Position">
                                          <p v-if="revisionForm.errors.position" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.position }}</p>
                                       </div>
                                   </div>
@@ -3327,7 +3477,7 @@ const formatDate = (dateStr) => {
                                   <!-- Result -->
                                   <div>
                                      <label class="block text-xs font-bold text-gray-900 mb-2">Result Description</label>
-                                     <textarea v-model="revisionForm.result_description" rows="3" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm resize-none shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="Describe the outcome..."></textarea>
+                                     <textarea v-model="revisionForm.result_description" rows="3" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all text-sm resize-none shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="Describe the outcome..."></textarea>
                                      <p v-if="revisionForm.errors.result_description" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.result_description }}</p>
                                   </div>
 
@@ -3335,7 +3485,7 @@ const formatDate = (dateStr) => {
                                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 items-start">
                                       <div>
                                          <label class="block text-xs font-bold text-gray-900 mb-2">Progress</label>
-                                         <select v-model="revisionForm.progress" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm bg-white shadow-sm cursor-pointer font-medium text-gray-600">
+                                         <select v-model="revisionForm.progress" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all text-sm bg-white shadow-sm cursor-pointer font-medium text-gray-600">
                                              <option value="" disabled>Select Progress</option>
                                              <option v-for="opt in progressOptions" :key="opt" :value="opt">{{ opt }}</option>
                                          </select>
@@ -3369,7 +3519,7 @@ const formatDate = (dateStr) => {
                                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                                       <div>
                                          <label class="block text-xs font-bold text-gray-900 mb-2">Next Activity Type</label>
-                                         <select v-model="revisionForm.next_activity_type" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm bg-white shadow-sm cursor-pointer font-medium text-gray-600">
+                                         <select v-model="revisionForm.next_activity_type" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all text-sm bg-white shadow-sm cursor-pointer font-medium text-gray-600">
                                              <option value="" disabled>Select Activity</option>
                                              <option v-for="type in activityTypes" :key="type" :value="type">{{ type }}</option>
                                          </select>
@@ -3377,7 +3527,7 @@ const formatDate = (dateStr) => {
                                       </div>
                                       <div>
                                          <label class="block text-xs font-bold text-gray-900 mb-2">Next Planning Date</label>
-                                         <input v-model="revisionForm.next_planning_date" type="date" :min="revisionMinNextPlanDate" :max="revisionMaxNextPlanDate" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm shadow-sm bg-white font-medium text-gray-600">
+                                         <input v-model="revisionForm.next_planning_date" type="date" :min="revisionMinNextPlanDate" :max="revisionMaxNextPlanDate" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all text-sm shadow-sm bg-white font-medium text-gray-600">
                                          <p v-if="revisionForm.errors.next_planning_date" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.next_planning_date }}</p>
                                       </div>
                                   </div>
@@ -3385,7 +3535,7 @@ const formatDate = (dateStr) => {
                                    <!-- Next Desc -->
                                   <div>
                                      <label class="block text-xs font-bold text-gray-900 mb-2">Next Plan Description</label>
-                                     <textarea v-model="revisionForm.next_plan_description" rows="3" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition-all text-sm resize-none shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="Plan description for next meeting..."></textarea>
+                                     <textarea v-model="revisionForm.next_plan_description" rows="3" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all text-sm resize-none shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="Plan description for next meeting..."></textarea>
                                      <p v-if="revisionForm.errors.next_plan_description" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.next_plan_description }}</p>
                                   </div>
                              </div>
@@ -3413,9 +3563,75 @@ const formatDate = (dateStr) => {
                         Cancel
                     </button>
                     <button type="submit" 
-                        class="w-full sm:w-auto px-8 py-2.5 text-sm font-bold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2"
+                        class="w-full sm:w-auto px-8 py-2.5 text-sm font-bold text-white bg-red-600 rounded-lg hover:bg-red-700 shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2"
                         :disabled="revisionForm.processing">
                         Update Revision
+                    </button>
+                </div>
+            </form>
+        </div>
+    </Modal>
+
+    <!-- Reschedule Modal -->
+    <Modal :show="showRescheduleModal" @close="closeRescheduleModal" max-width="xl" :noPadding="true">
+        <div class="px-4 py-4 sm:px-5 sm:py-4 bg-amber-500 flex items-center justify-between rounded-t-lg">
+             <div class="pr-8 sm:pr-0">
+                <h2 class="text-base sm:text-lg font-bold text-white leading-tight">Reschedule Plan</h2>
+                <p class="text-[9px] sm:text-xs text-amber-100 italic" v-if="reschedulePlan">
+                    For: {{ selectedCustomer?.company_name }} | {{ reschedulePlan.activity_code }}
+                </p>
+             </div>
+             <button @click="closeRescheduleModal" class="p-2 -mr-2 text-amber-100 hover:text-white transition-colors rounded-full hover:bg-amber-600/50">
+                 <svg class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                     <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                 </svg>
+             </button>
+        </div>
+
+        <div class="p-4 sm:p-6 bg-white">
+            <form @submit.prevent="submitReschedule" class="space-y-5">
+                <!-- New Date -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-900 mb-2">New Planning Date</label>
+                    <div class="relative">
+                        <input v-model="rescheduleForm.planning_date" type="date" :min="minRescheduleDate"
+                            class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm font-medium text-gray-700 shadow-sm">
+                    </div>
+                    <p v-if="rescheduleForm.errors.planning_date" class="mt-1.5 text-xs font-bold text-red-500">{{ rescheduleForm.errors.planning_date }}</p>
+                </div>
+
+                <!-- New Activity Type -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-900 mb-2">Activity Type</label>
+                    <select v-model="rescheduleForm.activity_type" 
+                        class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm bg-white font-medium text-gray-700 shadow-sm cursor-pointer">
+                        <option value="" disabled>Select Activity</option>
+                        <option v-for="type in activityTypes" :key="type" :value="type">{{ type }}</option>
+                    </select>
+                    <p v-if="rescheduleForm.errors.activity_type" class="mt-1.5 text-xs font-bold text-red-500">{{ rescheduleForm.errors.activity_type }}</p>
+                </div>
+
+                <!-- Reason -->
+                <div>
+                    <label class="block text-xs font-bold text-gray-900 mb-2">Reason for Rescheduling</label>
+                    <textarea v-model="rescheduleForm.reason" rows="3" 
+                        class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm resize-none font-medium text-gray-700 shadow-sm placeholder:text-gray-300"
+                        placeholder="Please provide a brief reason for rescheduling (in English)..."></textarea>
+                    <p v-if="rescheduleForm.errors.reason" class="mt-1.5 text-xs font-bold text-red-500">{{ rescheduleForm.errors.reason }}</p>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4">
+                    <button type="button" @click="closeRescheduleModal" class="w-full sm:w-auto px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors order-2 sm:order-1">
+                        Cancel
+                    </button>
+                    <button type="submit" 
+                        class="w-full sm:w-auto px-8 py-2.5 text-sm font-bold text-white bg-amber-600 rounded-xl hover:bg-amber-700 shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2 flex items-center justify-center gap-2"
+                        :disabled="rescheduleForm.processing">
+                        <svg v-if="rescheduleForm.processing" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Confirm Reschedule
                     </button>
                 </div>
             </form>
@@ -3429,6 +3645,8 @@ const formatDate = (dateStr) => {
         :products="products" 
         :selectedCustomer="selectedPlanningCustomer"
         :selectedDate="selectedPlanningDate"
+        :currentSimulatedTime="props.currentSimulatedTime"
+
         @close="closePlanningModal" 
     />
 
@@ -3438,6 +3656,7 @@ const formatDate = (dateStr) => {
         :plan="selectedReportPlan"
         :companyName="selectedReportCompanyName"
         :currentSimulatedTime="currentSimulatedTime"
+        :isLate="selectedReportIsLate"
         @close="closeReportModal"
     />
 </template>

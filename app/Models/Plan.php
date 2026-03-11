@@ -73,6 +73,11 @@ class Plan extends Model
         return $this->hasMany(PlanStatusLog::class);
     }
 
+    public function reschedules()
+    {
+        return $this->hasMany(PlanReschedule::class);
+    }
+
     protected $appends = ['activity_code', 'is_history', 'lifecycle_status_label'];
 
     public function getIsHistoryAttribute()
@@ -167,18 +172,22 @@ class Plan extends Model
         $expiryValue = $settings->plan_expiry_value ?? 7;
         $expiryUnit = $settings->plan_expiry_unit ?? 'Days';
 
-        $createdAt = $this->created_at;
+        // Basis: Planning Date (The target date for the activity)
+        $planningDate = $this->planning_date->startOfDay();
         $now = Carbon::now();
+
+        // If today is still before or on the planning date, it cannot be expired
+        if ($now->lte($planningDate)) {
+            return false;
+        }
 
         switch ($expiryUnit) {
             case 'Hours':
-                return $now->diffInMinutes($createdAt) / 60 >= $expiryValue;
+                return $now->diffInMinutes($planningDate) / 60 >= $expiryValue;
             case 'Minutes':
-                return $now->diffInMinutes($createdAt) >= $expiryValue;
+                return $now->diffInMinutes($planningDate) >= $expiryValue;
             default: // Days
-                // Use minutes to convert to days for float precision (avoid integer rounding)
-                // e.g., 6.9 days should be treated accurately vs integer 6
-                return $now->diffInMinutes($createdAt) / (60 * 24) >= $expiryValue;
+                return $now->diffInMinutes($planningDate) / (60 * 24) >= $expiryValue;
         }
     }
 
@@ -248,19 +257,25 @@ class Plan extends Model
         $expiryValue = $settings->plan_expiry_value ?? 7;
         $expiryUnit = $settings->plan_expiry_unit ?? 'Days';
 
-        $createdAt = $this->created_at;
+        // Basis: Planning Date
+        $planningDate = $this->planning_date->startOfDay();
         $now = Carbon::now();
 
         // Warning at 80% usage of time
         $threshold = $expiryValue * 0.8;
 
+        // If today is still before or on the planning date, no warning for "Late Report"
+        if ($now->lte($planningDate)) {
+            return false;
+        }
+
         switch ($expiryUnit) {
             case 'Hours':
-                return $now->diffInHours($createdAt) >= $threshold;
+                return $now->diffInHours($planningDate) >= $threshold;
             case 'Minutes':
-                return $now->diffInMinutes($createdAt) >= $threshold;
+                return $now->diffInMinutes($planningDate) >= $threshold;
             default: // Days
-                return $now->diffInDays($createdAt) >= $threshold;
+                return $now->diffInDays($planningDate) >= $threshold;
         }
     }
 

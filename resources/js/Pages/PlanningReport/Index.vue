@@ -14,6 +14,8 @@ const props = defineProps({
     timeSettings: Object,
     customers: Array,
     user_roles: Array,
+    users: Array,
+    teams: Array,
 });
 
 const page = usePage();
@@ -42,6 +44,7 @@ watch(() => page.props.flash, (flash) => {
 const search = ref(props.filters?.search || '');
 const customer_id = ref(props.filters?.customer_id || '');
 const user_id = ref(props.filters?.user_id || '');
+const team_id = ref(props.filters?.team_id || '');
 const group_by = ref(props.filters?.group_by || 'customer');
 const perPage = ref(props.filters?.perPage || '10');
 const currentTab = ref(props.filters?.tab || 'all');
@@ -69,6 +72,7 @@ const updateParams = throttle(() => {
         search: search.value,
         customer_id: customer_id.value,
         user_id: user_id.value,
+        team_id: team_id.value,
         group_by: group_by.value,
         tab: currentTab.value,
         perPage: perPage.value,
@@ -89,11 +93,25 @@ const changeTab = (tabId) => {
     updateParams();
 };
 
-watch([search, customer_id, user_id, group_by, perPage, start_date, end_date], () => {
+watch(team_id, () => {
+    user_id.value = '';
+});
+
+watch([search, customer_id, user_id, team_id, group_by, perPage, start_date, end_date], () => {
     updateParams();
 });
 
 // Column Visibility State
+const filteredUsers = computed(() => {
+    if (!team_id.value) {
+        return props.users;
+    }
+    return props.users.filter(user => 
+        user.team_id == team_id.value || 
+        (user.managed_teams_ids && user.managed_teams_ids.includes(parseInt(team_id.value)))
+    );
+});
+
 const isSuperAdmin = computed(() => props.user_roles && props.user_roles.includes('Super Admin'));
 const canViewFilters = computed(() => {
     if (isSuperAdmin.value) return true;
@@ -171,6 +189,7 @@ const activeFilterCount = computed(() => {
     let count = 0;
     if (customer_id.value) count++;
     if (user_id.value) count++;
+    if (team_id.value) count++;
     return count;
 });
 
@@ -632,10 +651,17 @@ const getActivityBadgeClass = (code) => {
                                         </select>
                                     </div>
                                     <div>
+                                        <label for="team" class="block text-sm font-medium leading-6 text-gray-900">Team</label>
+                                        <select v-model="team_id" id="team" class="mt-1 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-emerald-600 sm:text-sm sm:leading-6">
+                                            <option value="">All Teams</option>
+                                            <option v-for="team in teams" :key="team.id" :value="team.id">{{ team.name }}</option>
+                                        </select>
+                                    </div>
+                                    <div>
                                         <label for="user" class="block text-sm font-medium leading-6 text-gray-900">User</label>
                                         <select v-model="user_id" id="user" class="mt-1 block w-full rounded-md border-0 py-1.5 pl-3 pr-10 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-emerald-600 sm:text-sm sm:leading-6">
                                             <option value="">All Users</option>
-                                            <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }}</option>
+                                            <option v-for="user in filteredUsers" :key="user.id" :value="user.id">{{ user.name }}</option>
                                         </select>
                                     </div>
                                     <div>

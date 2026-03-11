@@ -694,11 +694,11 @@ const getActivityBadgeClass = (code) => {
                                 <td :colspan="columns.filter(c => c.visible).length + (isSuperAdmin ? 2 : 1)" class="px-4 py-2.5">
                                     <div class="flex items-center gap-2">
                                         <div class="h-6 w-6 rounded-lg bg-white shadow-sm border border-gray-100 flex items-center justify-center text-emerald-600">
-                                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                                             </svg>
                                         </div>
-                                        <span class="font-bold text-xs text-gray-800 tracking-tight">{{ report.customer?.company_name || 'Individual / General' }}</span>
+                                        <span class="font-bold text-sm text-gray-800 tracking-tight leading-5">{{ report.customer?.company_name || 'Individual / General' }}</span>
                                         <span class="ml-auto text-[10px] font-bold text-gray-400 bg-white px-2 py-0.5 rounded-full border border-gray-100 uppercase tracking-wider">
                                             {{ reports.data.filter(r => r.customer?.id === report.customer?.id).length }} Entries
                                         </span>
@@ -734,7 +734,7 @@ const getActivityBadgeClass = (code) => {
                             <!-- Customer -->
                             <td v-if="columns.find(c => c.key === 'customer').visible" class="px-4 py-3">
                                 <div class="flex flex-col">
-                                    <span class="text-xs font-bold text-gray-800 truncate max-w-[150px] uppercase tracking-tight">{{ report.customer?.company_name || 'Individual' }}</span>
+                                    <span class="text-sm font-bold text-gray-800 truncate max-w-[150px] uppercase tracking-tight leading-5">{{ report.customer?.company_name || 'Individual' }}</span>
                                     <span v-if="report.product" class="text-[10px] text-gray-400 font-medium">{{ report.product.name }}</span>
                                 </div>
                             </td>
@@ -847,11 +847,11 @@ const getActivityBadgeClass = (code) => {
                     <div v-if="groupBy === 'customer' && (index === 0 || report.customer?.id !== reports.data[index-1]?.customer?.id)" 
                         class="py-3 px-1 flex items-center gap-2 sticky top-0 bg-white/95 backdrop-blur-sm z-10 border-b border-gray-50 mb-1">
                         <div class="h-6 w-6 rounded-lg bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600">
-                            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                             </svg>
                         </div>
-                        <span class="font-bold text-[13px] text-gray-900 tracking-tight uppercase">{{ report.customer?.company_name || 'Individual / General' }}</span>
+                        <span class="font-bold text-sm text-gray-900 tracking-tight uppercase leading-5">{{ report.customer?.company_name || 'Individual / General' }}</span>
                     </div>
 
                     <div @click="openDetail(report)" 
@@ -862,7 +862,7 @@ const getActivityBadgeClass = (code) => {
                                 <input v-if="isSuperAdmin" type="checkbox" v-model="selectedIds" :value="report.id" @click.stop
                                     class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 flex-shrink-0" />
                                 <div class="min-w-0">
-                                    <div class="text-sm font-bold text-gray-900 truncate uppercase tracking-tight">{{ report.customer?.company_name || 'Individual' }}</div>
+                                    <div class="text-sm font-bold text-gray-900 truncate uppercase tracking-tight leading-5">{{ report.customer?.company_name || 'Individual' }}</div>
                                     <div class="text-[10px] text-gray-400 mt-0.5 flex items-center gap-1.5 font-bold uppercase tracking-wider">
                                         {{ formatDate(report.report_date) }}
                                         <span v-if="isSuperAdmin" class="flex items-center gap-1.5 text-emerald-600">

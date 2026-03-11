@@ -73,6 +73,15 @@ class PlanningReportController extends Controller
             $query->where('plans.user_id', $request->input('user_id'));
         }
 
+        if ($request->has('team_id') && $request->input('team_id') !== null && $request->input('team_id') !== '') {
+            $query->whereHas('user', function ($q) use ($request) {
+                $q->where('team_id', $request->input('team_id'))
+                    ->orWhereHas('managedTeams', function ($t) use ($request) {
+                        $t->where('id', $request->input('team_id'));
+                    });
+            });
+        }
+
         // Date Filtering
         if ($request->has('start_date') && $request->input('start_date')) {
             $query->whereDate('planning_date', '>=', $request->input('start_date'));
@@ -147,13 +156,23 @@ class PlanningReportController extends Controller
 
         // Get users list for filter dropdown (based on role visibility)
         $usersQuery = \App\Models\User::select('id', 'name', 'team_id')->orderBy('name');
+
+        // Filter by team if selected
+        if ($request->has('team_id') && $request->input('team_id')) {
+            $usersQuery->where('team_id', $request->input('team_id'));
+        }
+
         if ($user && !$user->hasRole(['Super Admin', 'BOD', 'Board of Director'])) {
             if ($user->hasRole('Manager')) {
-                $managedTeam = \App\Models\Team::where('manager_id', $user->id)->first();
-                if ($managedTeam) {
-                    $memberIds = $managedTeam->members()->pluck('id')->toArray();
-                    $memberIds[] = $user->id;
-                    $usersQuery->whereIn('id', $memberIds);
+                $managedTeamIds = \App\Models\Team::where('manager_id', $user->id)->pluck('id')->toArray();
+                if (!empty($managedTeamIds)) {
+                    $usersQuery->where(function ($q) use ($managedTeamIds, $user) {
+                        $q->whereIn('team_id', $managedTeamIds)
+                            ->orWhereHas('managedTeams', function ($t) use ($managedTeamIds) {
+                                $t->whereIn('id', $managedTeamIds);
+                            })
+                            ->orWhere('id', $user->id);
+                    });
                 } else {
                     $usersQuery->where('id', $user->id);
                 }
@@ -161,11 +180,24 @@ class PlanningReportController extends Controller
                 $usersQuery->where('id', $user->id);
             }
         }
-        $users = $usersQuery->get();
+        $users = $usersQuery->with('managedTeams:id,manager_id')->get()->map(function ($u) {
+            $u->managed_teams_ids = $u->managedTeams->pluck('id')->toArray();
+            return $u;
+        });
+
+        // Get teams list for filter dropdown
+        $teams = [];
+        if ($user) {
+            if ($user->hasRole(['Super Admin', 'BOD', 'Board of Director'])) {
+                $teams = \App\Models\Team::select('id', 'name')->orderBy('name')->get();
+            } elseif ($user->hasRole('Manager')) {
+                $teams = \App\Models\Team::where('manager_id', $user->id)->select('id', 'name')->orderBy('name')->get();
+            }
+        }
 
         // MERGE group_by into filters so frontend knows the default
         $filters = array_merge(
-            $request->only(['search', 'customer_id', 'user_id', 'tab', 'perPage', 'start_date', 'end_date']),
+            $request->only(['search', 'customer_id', 'user_id', 'team_id', 'tab', 'perPage', 'start_date', 'end_date']),
             ['group_by' => $groupBy]
         );
 
@@ -175,6 +207,7 @@ class PlanningReportController extends Controller
             'timeSettings' => $timeSettings,
             'customers' => $customers,
             'users' => $users,
+            'teams' => $teams,
             'user_roles' => \Illuminate\Support\Facades\Auth::user() ? \Illuminate\Support\Facades\Auth::user()->getRoleNames() : [],
         ]);
     }
@@ -260,6 +293,7 @@ class PlanningReportController extends Controller
             'search' => $request->query('search'),
             'start_date' => $request->query('start_date'),
             'end_date' => $request->query('end_date'),
+            'team_id' => $request->query('team_id'),
         ];
 
         $user = auth()->user();
@@ -308,6 +342,15 @@ class PlanningReportController extends Controller
         }
         if ($endDate) {
             $query->whereDate('planning_date', '<=', $endDate);
+        }
+
+        if ($request->has('team_id') && $request->input('team_id')) {
+            $query->whereHas('user', function ($q) use ($request) {
+                $q->where('team_id', $request->input('team_id'))
+                    ->orWhereHas('managedTeams', function ($t) use ($request) {
+                        $t->where('id', $request->input('team_id'));
+                    });
+            });
         }
 
         if ($user && !$user->hasRole(['Super Admin', 'BOD', 'Board of Director'])) {

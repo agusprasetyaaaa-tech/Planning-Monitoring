@@ -108,6 +108,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/planning/{plan}/report', [PlanningController::class, 'storeReport'])->name('planning.report.store');
     Route::patch('/planning/{plan}/fail', [PlanningController::class, 'markAsFailed'])->name('planning.fail');
     Route::patch('/planning/{plan}/revise', [PlanningController::class, 'revise'])->name('planning.revise');
+    Route::patch('/planning/{plan}/reschedule', [PlanningController::class, 'reschedule'])->name('planning.reschedule');
 
     // Reset status logs (Super Admin only)
     Route::delete('/planning/{plan}/reset-status-logs', [PlanningController::class, 'resetStatusLogs'])->name('planning.reset-status-logs');

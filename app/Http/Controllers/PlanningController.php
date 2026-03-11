@@ -15,6 +15,8 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Models\PlanReschedule;
+
 
 
 use App\Notifications\PlanStatusChanged;
@@ -32,6 +34,22 @@ class PlanningController extends Controller
         // Get authenticated user for filtering
         $user = Auth::user();
 
+        // 1. Role-based defaults and scope discovery
+        $managedTeamIds = [];
+        if ($user && $user->hasRole('Manager')) {
+            $managedTeamIds = Team::where('manager_id', $user->id)->pluck('id')->toArray();
+            // If they don't manage any team in the teams table but are marked as Manager, 
+            // fallback to their own team_id
+            if (empty($managedTeamIds) && $user->team_id) {
+                $managedTeamIds[] = $user->team_id;
+            }
+
+            // Auto-default team filter for Managers if not selected
+            if (!$request->team && !empty($managedTeamIds) && !$user->hasRole(['Super Admin', 'BOD', 'Board of Director'])) {
+                $request->merge(['team' => $managedTeamIds[0]]);
+            }
+        }
+
         // Search filter
         if ($request->search) {
             $query->where(function ($q) use ($request) {
@@ -47,20 +65,12 @@ class PlanningController extends Controller
 
         // Filter by team
         if ($request->team) {
-            // Privileged users (Super Admin / BOD) can filter by any team
-            if ($user->hasRole(['Super Admin', 'Board of Director', 'BOD'])) {
-                $query->whereHas('marketing', function ($q) use ($request) {
-                    $q->where('team_id', $request->team);
-                });
-            } else {
-                // Restricted users can only filter within their allowed scope
-                $query->whereHas('marketing', function ($q) use ($request) {
-                    $q->where('team_id', $request->team)
-                        ->orWhereHas('managedTeams', function ($mq) use ($request) {
-                            $mq->where('id', $request->team);
-                        });
-                });
-            }
+            $query->whereHas('marketing', function ($q) use ($request) {
+                $q->where('team_id', $request->team)
+                    ->orWhereHas('managedTeams', function ($t) use ($request) {
+                        $t->where('id', $request->team);
+                    });
+            });
         }
 
         // Filter by user (marketing_sales_id)
@@ -68,24 +78,20 @@ class PlanningController extends Controller
             $query->where('marketing_sales_id', $request->user);
         }
 
-
-
-        // Role-based filtering constraints
+        // Final Role-based constraints (Enforcement)
         if (!$user->hasRole(['Super Admin', 'BOD', 'Board of Director', 'Manager'])) {
+            // Standard User can ONLY see their own data
             $query->where('marketing_sales_id', $user->id);
-        }
-        if ($user->hasRole('Manager') && !$user->hasRole(['Super Admin', 'BOD', 'Board of Director'])) {
-            $managedTeam = Team::where('manager_id', $user->id)->first();
-            $pTeamId = $managedTeam ? $managedTeam->id : $user->team_id;
-
-            if ($pTeamId) {
-                $query->whereHas('marketing', function ($q) use ($pTeamId, $user) {
-                    $q->where('team_id', $pTeamId)->orWhere('id', $user->id);
-                });
-                if (!$request->team) {
-                    $request->merge(['team' => $pTeamId]);
-                }
-            }
+        } elseif ($user->hasRole('Manager') && !$user->hasRole(['Super Admin', 'BOD', 'Board of Director'])) {
+            // Managers can only see their managed teams OR their own personal data
+            $query->where(function ($q) use ($managedTeamIds, $user) {
+                $q->whereHas('marketing', function ($mq) use ($managedTeamIds) {
+                    $mq->whereIn('team_id', $managedTeamIds)
+                        ->orWhereHas('managedTeams', function ($t) use ($managedTeamIds) {
+                            $t->whereIn('id', $managedTeamIds);
+                        });
+                })->orWhere('marketing_sales_id', $user->id);
+            });
         }
 
         // --- TAB LOGIC: WEEKS (CALENDAR BASED) ---
@@ -166,7 +172,7 @@ class PlanningController extends Controller
             $query->with([
                 'plans' => function ($q) use ($filterEndDate) {
                     $q->where('planning_date', '<=', $filterEndDate)
-                        ->with(['user', 'report', 'product', 'statusLogs.user'])
+                        ->with(['user', 'report', 'product', 'statusLogs.user', 'reschedules.user'])
                         ->orderBy('planning_date', 'desc')
                         ->orderBy('id', 'desc');
                 }
@@ -180,7 +186,7 @@ class PlanningController extends Controller
                 'plans' => function ($q) use ($month, $year) {
                     $q->whereYear('planning_date', $year)
                         ->whereMonth('planning_date', $month)
-                        ->with(['user', 'report', 'product', 'statusLogs.user'])
+                        ->with(['user', 'report', 'product', 'statusLogs.user', 'reschedules.user'])
                         ->orderBy('planning_date', 'desc')
                         ->orderBy('id', 'desc');
                 }
@@ -476,8 +482,8 @@ class PlanningController extends Controller
             'filters' => array_merge($request->only(['search', 'team', 'user', 'sort', 'direction', 'perPage', 'month', 'year', 'view']), ['tab' => $currentTab]),
             'teams' => Team::select('id', 'name', 'manager_id')
                 ->with('manager:id,name')
-                ->when($user->hasRole('Manager') && !$user->hasRole(['Super Admin', 'Board of Director']), function ($q) use ($user) {
-                    $q->where('id', $user->team_id);
+                ->when($user->hasRole('Manager') && !$user->hasRole(['Super Admin', 'Board of Director', 'BOD']), function ($q) use ($user, $managedTeamIds) {
+                    $q->whereIn('id', $managedTeamIds);
                 })
                 ->orderBy('name')
                 ->get(),
@@ -491,39 +497,39 @@ class PlanningController extends Controller
                 ->whereHas('roles', function ($q) {
                     $q->whereIn('name', ['User', 'Supervisor', 'Manager']);
                 })
-                ->where(function ($q) {
-                    $q->whereNotNull('team_id')
-                        ->orWhereIn('id', function ($subQuery) {
-                            $subQuery->select('manager_id')
-                                ->from('teams')
-                                ->whereNotNull('manager_id');
-                        });
+                ->where(function ($q) use ($user, $managedTeamIds) {
+                    if ($user->hasRole(['Super Admin', 'BOD', 'Board of Director'])) {
+                        $q->whereNotNull('team_id')
+                            ->orWhereIn('id', function ($subQuery) {
+                                $subQuery->select('manager_id')
+                                    ->from('teams')
+                                    ->whereNotNull('manager_id');
+                            });
+                    } elseif ($user->hasRole('Manager')) {
+                        $q->whereIn('team_id', $managedTeamIds)
+                            ->orWhere('id', $user->id);
+                    } else {
+                        $q->where('id', $user->id);
+                    }
                 })
-                ->with('team:id,manager_id')
+                ->with(['team:id,manager_id', 'managedTeams:id,manager_id'])
                 ->orderBy('name')
                 ->get()
-                ->map(function ($user) {
-                    if (!$user->team_id && $user->managed_team_id) {
-                        $user->team_id = $user->managed_team_id;
+                ->map(function ($u) {
+                    $u->managed_teams_ids = $u->managedTeams->pluck('id')->toArray();
+                    if (!$u->team_id && $u->managed_team_id) {
+                        $u->team_id = $u->managed_team_id;
                     }
-                    $user->is_manager = ($user->team && $user->team->manager_id == $user->id)
-                        || (!empty($user->managed_team_id));
-                    return $user;
+                    $u->is_manager = ($u->team && $u->team->manager_id == $u->id)
+                        || (!empty($u->managed_team_id));
+                    return $u;
                 }),
             'products' => \App\Models\Product::select('id', 'name')->orderBy('name')->get(),
             'allCustomers' => Customer::where(function ($q) use ($user) {
-                if ($user->hasRole(['Super Admin', 'Board of Director'])) {
+                if ($user->hasRole(['Super Admin', 'BOD', 'Board of Director'])) {
                     // No restriction
-                } elseif ($user->hasRole('Manager')) {
-                    // Manager can see their own customers OR customers belonging to their team members
-                    $q->where('marketing_sales_id', $user->id)
-                        ->orWhereIn('marketing_sales_id', function ($query) use ($user) {
-                        $query->select('id')
-                            ->from('users')
-                            ->where('team_id', $user->team_id);
-                    });
                 } else {
-                    // User / Supervisor only sees their own
+                    // Manager, User, and Supervisor only see their own customers for plan creation
                     $q->where('marketing_sales_id', $user->id);
                 }
             })->select('id', 'company_name', 'product_id')->orderBy('company_name')->get(),
@@ -569,9 +575,9 @@ class PlanningController extends Controller
         // Get customers based on user role
         $customersQuery = Customer::with('product')->orderBy('company_name');
 
-        // Super Admin can see all customers
-        if (!$user->hasRole('Super Admin')) {
-            // Regular users only see their own customers
+        // Super Admin/BOD can see all customers
+        if (!$user->hasRole(['Super Admin', 'BOD', 'Board of Director'])) {
+            // Regular users (Manager, Sales, etc.) only see their own customers
             $customersQuery->where('marketing_sales_id', $user->id);
         }
 
@@ -1248,5 +1254,35 @@ class PlanningController extends Controller
         } else {
             \Illuminate\Support\Facades\Log::info('No Report found for this plan.');
         }
+    }
+
+    public function reschedule(Request $request, Plan $plan)
+    {
+        $request->validate([
+            'planning_date' => 'required|date',
+            'activity_type' => 'required|string',
+            'reason' => 'required|string',
+        ]);
+
+        DB::transaction(function () use ($request, $plan) {
+            // Log the reschedule
+            PlanReschedule::create([
+                'plan_id' => $plan->id,
+                'user_id' => Auth::id(),
+                'old_planning_date' => $plan->getRawOriginal('planning_date'),
+                'new_planning_date' => $request->planning_date,
+                'old_activity_type' => $plan->activity_type,
+                'new_activity_type' => $request->activity_type,
+                'reason' => $request->reason,
+            ]);
+
+            // Update the plan
+            $plan->update([
+                'planning_date' => $request->planning_date,
+                'activity_type' => $request->activity_type,
+            ]);
+        });
+
+        return back()->with('success', 'Plan rescheduled successfully.');
     }
 }

@@ -10,12 +10,34 @@ const props = defineProps({
     products: Array,
     selectedCustomer: Object, // Pre-selected customer from table row button
     selectedDate: String,    // Pre-selected date from calendar
+    currentSimulatedTime: String,
 });
+
+// Helper: Format date for input field (YYYY-MM-DD) strictly in Asia/Jakarta (WIB)
+const formatDateForInput = (dateInput) => {
+    if (!dateInput) return '';
+    try {
+        const date = new Date(dateInput);
+        return new Intl.DateTimeFormat('en-CA', {
+            timeZone: 'Asia/Jakarta',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        }).format(date);
+    } catch (e) {
+        return '';
+    }
+};
+
+const getTodayForInput = () => {
+    const now = props.currentSimulatedTime ? new Date(props.currentSimulatedTime) : new Date();
+    return formatDateForInput(now);
+};
 
 const emit = defineEmits(['close']);
 
 const form = useForm({
-    planning_date: (props.selectedDate ? String(props.selectedDate).split('T')[0] : new Date().toISOString().split('T')[0]),
+    planning_date: (props.selectedDate ? formatDateForInput(props.selectedDate) : getTodayForInput()),
     activity_type: '',
     customer_id: props.selectedCustomer?.id || '',
     project_name: '',
@@ -39,7 +61,7 @@ watch(() => props.selectedCustomer, (newCustomer) => {
 
 watch(() => props.selectedDate, (newDate) => {
     if (newDate) {
-        form.planning_date = String(newDate).split('T')[0];
+        form.planning_date = formatDateForInput(newDate);
     }
 });
 
@@ -85,13 +107,13 @@ watch(selectedCustomerRef, (newCustomer) => {
 });
 
 const minPlanningDate = computed(() => {
-    return new Date().toISOString().split('T')[0];
+    return getTodayForInput();
 });
 
 const maxPlanningDate = computed(() => {
-    const d = new Date();
+    const d = props.currentSimulatedTime ? new Date(props.currentSimulatedTime) : new Date();
     d.setDate(d.getDate() + 365); // Far future (1 year)
-    return d.toISOString().split('T')[0];
+    return formatDateForInput(d);
 });
 
 const submit = () => {
