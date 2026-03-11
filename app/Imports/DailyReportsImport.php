@@ -80,7 +80,17 @@ class DailyReportsImport implements ToModel, WithHeadingRow, SkipsEmptyRows
         // Normalize progress
         $progress = $this->normalizeProgress(trim($row['progress'] ?? ''));
 
-        return new DailyReport([
+        // Parse input_at (optional)
+        $createdAt = null;
+        if (!empty($row['input_at'])) {
+            if (is_numeric($row['input_at'])) {
+                $createdAt = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($row['input_at']);
+            } else {
+                $createdAt = date('Y-m-d H:i:s', strtotime($row['input_at']));
+            }
+        }
+
+        $reportData = [
             'user_id' => $this->userId,
             'customer_id' => $customer->id,
             'product_id' => $product?->id,
@@ -94,7 +104,13 @@ class DailyReportsImport implements ToModel, WithHeadingRow, SkipsEmptyRows
             'progress' => $progress,
             'is_success' => $isSuccess,
             'next_plan' => trim($row['next_plan'] ?? ''),
-        ]);
+        ];
+
+        if ($createdAt) {
+            $reportData['created_at'] = $createdAt;
+        }
+
+        return new DailyReport($reportData);
     }
 
     /**

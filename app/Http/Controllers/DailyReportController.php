@@ -265,29 +265,14 @@ class DailyReportController extends Controller
     public function exportPdf(Request $request)
     {
         $user = Auth::user();
-        $query = DailyReport::with(['user', 'customer', 'product']);
+        $query = DailyReport::with(['user', 'customer', 'product'])->select('daily_reports.*');
 
         // IDs filter for bulk export
         if ($request->ids) {
-            $query->whereIn('id', $request->ids);
+            $ids = is_array($request->ids) ? $request->ids : explode(',', $request->ids);
+            $query->whereIn('daily_reports.id', array_filter($ids));
         } else {
-            // Role-based filtering
-            if (!$user->hasRole(['Super Admin', 'BOD', 'Board of Director'])) {
-                if ($user->hasRole('Manager')) {
-                    $managedTeam = Team::where('manager_id', $user->id)->first();
-                    if ($managedTeam) {
-                        $memberIds = $managedTeam->members()->pluck('id')->toArray();
-                        $memberIds[] = $user->id;
-                        $query->whereIn('user_id', $memberIds);
-                    } else {
-                        $query->where('user_id', $user->id);
-                    }
-                } else {
-                    $query->where('user_id', $user->id);
-                }
-            }
-
-            // Search filtering
+            // Apply search filtering
             if ($request->search) {
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {
@@ -319,20 +304,35 @@ class DailyReportController extends Controller
             if ($request->user_id) {
                 $query->where('user_id', $request->user_id);
             }
+        }
 
-            // Handle group_by
-            $groupBy = $request->input('group_by', 'customer');
-
-            if ($groupBy === 'customer') {
-                $query->leftJoin('customers', 'daily_reports.customer_id', '=', 'customers.id')
-                    ->orderBy('customers.company_name', 'asc')
-                    ->orderBy('daily_reports.report_date', 'desc')
-                    ->orderBy('daily_reports.created_at', 'desc')
-                    ->select('daily_reports.*');
+        // Role-based filtering (Security)
+        if (!$user->hasRole(['Super Admin', 'BOD', 'Board of Director'])) {
+            if ($user->hasRole('Manager')) {
+                $managedTeam = Team::where('manager_id', $user->id)->first();
+                if ($managedTeam) {
+                    $memberIds = $managedTeam->members()->pluck('id')->toArray();
+                    $memberIds[] = $user->id;
+                    $query->whereIn('daily_reports.user_id', $memberIds);
+                } else {
+                    $query->where('daily_reports.user_id', $user->id);
+                }
             } else {
-                $query->orderBy('daily_reports.report_date', 'desc')
-                    ->orderBy('daily_reports.created_at', 'desc');
+                $query->where('daily_reports.user_id', $user->id);
             }
+        }
+
+        // Handle group_by
+        $groupBy = $request->input('group_by', 'customer');
+
+        if ($groupBy === 'customer') {
+            $query->leftJoin('customers', 'daily_reports.customer_id', '=', 'customers.id')
+                ->orderBy('customers.company_name', 'asc')
+                ->orderBy('daily_reports.report_date', 'desc')
+                ->orderBy('daily_reports.created_at', 'desc');
+        } else {
+            $query->orderBy('daily_reports.report_date', 'desc')
+                ->orderBy('daily_reports.created_at', 'desc');
         }
 
         $reports = $query->get();

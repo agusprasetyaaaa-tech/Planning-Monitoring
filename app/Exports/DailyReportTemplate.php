@@ -13,6 +13,7 @@ class DailyReportTemplate implements WithHeadings, WithStyles, WithColumnWidths
     {
         return [
             'report_date',
+            'input_at',
             'company_name',
             'product',
             'activity_type',
@@ -31,17 +32,18 @@ class DailyReportTemplate implements WithHeadings, WithStyles, WithColumnWidths
     {
         return [
             'A' => 15,  // report_date
-            'B' => 25,  // company_name
-            'C' => 20,  // product
-            'D' => 20,  // activity_type
-            'E' => 35,  // description
-            'F' => 20,  // location
-            'G' => 20,  // pic
-            'H' => 20,  // position
-            'I' => 35,  // result_description
-            'J' => 25,  // progress
-            'K' => 15,  // is_success
-            'L' => 30,  // next_plan
+            'B' => 20,  // input_at
+            'C' => 25,  // company_name
+            'D' => 20,  // product
+            'E' => 20,  // activity_type
+            'F' => 35,  // description
+            'G' => 20,  // location
+            'H' => 20,  // pic
+            'I' => 20,  // position
+            'J' => 35,  // result_description
+            'K' => 25,  // progress
+            'L' => 15,  // is_success
+            'M' => 30,  // next_plan
         ];
     }
 
@@ -50,6 +52,7 @@ class DailyReportTemplate implements WithHeadings, WithStyles, WithColumnWidths
         // Add a second row with example/hint data
         $sheet->fromArray([
             '2026-03-09',
+            now()->format('Y-m-d H:i:s'),
             'PT Example Company',
             'Product Name',
             'Visit',
@@ -66,6 +69,7 @@ class DailyReportTemplate implements WithHeadings, WithStyles, WithColumnWidths
         // Add a third row with format hints
         $sheet->fromArray([
             'YYYY-MM-DD',
+            'YYYY-MM-DD HH:MM:SS (optional)',
             'Must match customer name in system',
             'Must match product name (optional)',
             'Call/Visit/Ent/Online Meeting/Survey/Presentation/Proposal/Negotiation/Admin-Tender/Other',

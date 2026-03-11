@@ -98,6 +98,7 @@ watch(() => props.reports.data, () => {
 const columns = ref([
     { key: 'no', label: 'No', visible: true },
     { key: 'report_date', label: 'Date', visible: true },
+    { key: 'created_at', label: 'Input At', visible: true },
     { key: 'sales', label: 'Sales', visible: isSuperAdmin.value },
     { key: 'customer', label: 'Customer', visible: true },
     { key: 'activity_code', label: 'Code', visible: true },
@@ -244,11 +245,17 @@ const confirmBulkDelete = () => {
 };
 
 const exportSelectedExcel = () => {
-    window.location.href = route('daily-report.export-excel', { ids: selectedIds.value });
+    window.location.href = route('daily-report.export-excel', { 
+        ids: selectedIds.value,
+        group_by: groupBy.value 
+    });
 };
 
 const exportSelectedPdf = () => {
-    window.location.href = route('daily-report.export-pdf', { ids: selectedIds.value });
+    window.location.href = route('daily-report.export-pdf', { 
+        ids: selectedIds.value,
+        group_by: groupBy.value 
+    });
 };
 
 // Import Modal State
@@ -326,6 +333,12 @@ const submitImport = () => {
 const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString('id-ID', options);
+};
+
+const formatTime = (dateString) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
 };
 
 const getProgressData = (progressValue) => {
@@ -627,7 +640,7 @@ const getActivityBadgeClass = (code) => {
             </div>
 
             <!-- Bulk Actions Bar -->
-            <div v-if="selectedIds.length > 0 && isSuperAdmin" class="bg-emerald-50/80 border-b border-emerald-100 px-4 py-2.5">
+            <div v-if="selectedIds.length > 0" class="bg-emerald-50/80 border-b border-emerald-100 px-4 py-2.5">
                 <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
                         <span class="text-sm font-medium text-emerald-800">
@@ -643,7 +656,7 @@ const getActivityBadgeClass = (code) => {
                             PDF
                         </button>
                     </div>
-                    <button @click="deleteSelected" class="inline-flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-md transition-colors">
+                    <button v-if="isSuperAdmin" @click="deleteSelected" class="inline-flex items-center gap-1 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-md transition-colors">
                         <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         Delete
                     </button>
@@ -655,12 +668,13 @@ const getActivityBadgeClass = (code) => {
                 <table class="w-full text-left">
                     <thead>
                         <tr class="border-b border-gray-100">
-                            <th v-if="isSuperAdmin" class="px-4 py-3 w-10">
+                            <th class="px-4 py-3 w-10">
                                 <input type="checkbox" v-model="selectAll" @change="toggleSelectAll" @click.stop
                                     class="h-3.5 w-3.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-0" />
                             </th>
                             <th v-if="columns.find(c => c.key === 'no').visible" class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-10">No</th>
                             <th v-if="columns.find(c => c.key === 'report_date').visible" class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
+                            <th v-if="columns.find(c => c.key === 'created_at').visible" class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-20">Input At</th>
                             <th v-if="columns.find(c => c.key === 'sales').visible" class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Sales</th>
                             <th v-if="columns.find(c => c.key === 'customer').visible" class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
                             <th v-if="columns.find(c => c.key === 'activity_code').visible" class="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider w-20">Code</th>
@@ -696,7 +710,7 @@ const getActivityBadgeClass = (code) => {
                                 :class="{'bg-emerald-50/10': selectedIds.includes(report.id)}"
                             >
                             <!-- Checkbox -->
-                            <td v-if="isSuperAdmin" class="px-4 py-3">
+                            <td class="px-4 py-3">
                                 <input type="checkbox" v-model="selectedIds" :value="report.id" @click.stop
                                     class="h-3.5 w-3.5 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-0" />
                             </td>
@@ -705,6 +719,13 @@ const getActivityBadgeClass = (code) => {
                             <!-- Date -->
                             <td v-if="columns.find(c => c.key === 'report_date').visible" class="px-4 py-3 whitespace-nowrap">
                                 <span class="text-xs text-gray-800 font-medium">{{ formatDate(report.report_date) }}</span>
+                            </td>
+                            <!-- Input At -->
+                            <td v-if="columns.find(c => c.key === 'created_at').visible" class="px-4 py-3">
+                                <div class="flex flex-col">
+                                    <span class="text-[10px] text-gray-400 font-medium uppercase tracking-tight">{{ formatDate(report.created_at) }}</span>
+                                    <span class="text-xs font-bold text-gray-700">{{ formatTime(report.created_at) }}</span>
+                                </div>
                             </td>
                             <!-- Sales -->
                             <td v-if="columns.find(c => c.key === 'sales').visible" class="px-4 py-3 whitespace-nowrap">

@@ -24,12 +24,14 @@ class DailyReportExport implements FromCollection, WithHeadings, WithMapping, Wi
 
     public function collection()
     {
-        $query = DailyReport::with(['user', 'customer', 'product']);
+        $query = DailyReport::with(['user', 'customer', 'product'])->select('daily_reports.*');
 
-        // Apply filters
+        // Apply IDs filter if present
         if (!empty($this->filters['ids'])) {
-            $query->whereIn('id', $this->filters['ids']);
+            $ids = is_array($this->filters['ids']) ? $this->filters['ids'] : explode(',', $this->filters['ids']);
+            $query->whereIn('daily_reports.id', array_filter($ids));
         } else {
+            // Apply search filter
             if (!empty($this->filters['search'])) {
                 $search = $this->filters['search'];
                 $query->where(function ($q) use ($search) {
@@ -44,6 +46,7 @@ class DailyReportExport implements FromCollection, WithHeadings, WithMapping, Wi
                 });
             }
 
+            // Apply date filters
             if (!empty($this->filters['start_date'])) {
                 $query->whereDate('report_date', '>=', $this->filters['start_date']);
             }
@@ -51,20 +54,28 @@ class DailyReportExport implements FromCollection, WithHeadings, WithMapping, Wi
                 $query->whereDate('report_date', '<=', $this->filters['end_date']);
             }
 
-            // Role-based filtering
-            if (!$this->user->hasRole(['Super Admin', 'BOD', 'Board of Director'])) {
-                if ($this->user->hasRole('Manager')) {
-                    $managedTeam = \App\Models\Team::where('manager_id', $this->user->id)->first();
-                    if ($managedTeam) {
-                        $memberIds = $managedTeam->members()->pluck('id')->toArray();
-                        $memberIds[] = $this->user->id;
-                        $query->whereIn('user_id', $memberIds);
-                    } else {
-                        $query->where('user_id', $this->user->id);
-                    }
+            // Apply other entity filters
+            if (!empty($this->filters['customer_id'])) {
+                $query->where('customer_id', $this->filters['customer_id']);
+            }
+            if (!empty($this->filters['user_id'])) {
+                $query->where('user_id', $this->filters['user_id']);
+            }
+        }
+
+        // Role-based filtering (Security focus)
+        if (!$this->user->hasRole(['Super Admin', 'BOD', 'Board of Director'])) {
+            if ($this->user->hasRole('Manager')) {
+                $managedTeam = \App\Models\Team::where('manager_id', $this->user->id)->first();
+                if ($managedTeam) {
+                    $memberIds = $managedTeam->members()->pluck('id')->toArray();
+                    $memberIds[] = $this->user->id;
+                    $query->whereIn('user_id', $memberIds);
                 } else {
                     $query->where('user_id', $this->user->id);
                 }
+            } else {
+                $query->where('user_id', $this->user->id);
             }
         }
 
@@ -74,8 +85,7 @@ class DailyReportExport implements FromCollection, WithHeadings, WithMapping, Wi
             $query->leftJoin('customers', 'daily_reports.customer_id', '=', 'customers.id')
                 ->orderBy('customers.company_name', 'asc')
                 ->orderBy('daily_reports.report_date', 'desc')
-                ->orderBy('daily_reports.created_at', 'desc')
-                ->select('daily_reports.*');
+                ->orderBy('daily_reports.created_at', 'desc');
         } else {
             $query->orderBy('daily_reports.report_date', 'desc')
                 ->orderBy('daily_reports.created_at', 'desc');
@@ -89,6 +99,7 @@ class DailyReportExport implements FromCollection, WithHeadings, WithMapping, Wi
         return [
             'No',
             'Report Date',
+            'Input At',
             'Sales / Marketing',
             'Company',
             'Product',
@@ -111,6 +122,7 @@ class DailyReportExport implements FromCollection, WithHeadings, WithMapping, Wi
         return [
             $rowNumber,
             $report->report_date ? \Carbon\Carbon::parse($report->report_date)->format('d/m/Y') : '-',
+            $report->created_at ? $report->created_at->format('d/m/Y H:i') : '-',
             $report->user->name ?? '-',
             $report->customer->company_name ?? '-',
             $report->product->name ?? '-',

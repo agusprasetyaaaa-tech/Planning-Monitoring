@@ -95,15 +95,16 @@
             <tr>
                 <th style="width: 3%;">No</th>
                 <th style="width: 8%;">Date</th>
+                <th style="width: 8%;">Input At</th>
                 <th style="width: 9%;">Sales</th>
                 <th style="width: 12%;">Company</th>
                 <th style="width: 10%;">Code</th>
                 <th style="width: 10%;">PIC</th>
                 <th style="width: 12%;">Description</th>
                 <th style="width: 12%;">Result</th>
-                <th style="width: 12%;">Next Plan</th>
-                <th style="width: 6%;">Progress</th>
-                <th style="width: 6%;">Status</th>
+                <th style="width: 11%;">Next Plan</th>
+                <th style="width: 5%;">Progress</th>
+                <th style="width: 5%;">Status</th>
             </tr>
         </thead>
         <tbody>
@@ -111,6 +112,11 @@
                 <tr>
                     <td>{{ $index + 1 }}</td>
                     <td>{{ \Carbon\Carbon::parse($report->report_date)->format('d/m/Y') }}</td>
+                    <td>
+                        {{ $report->created_at ? $report->created_at->format('d/m/Y') : '-' }}
+                        <br><small
+                            style="color: #666;">{{ $report->created_at ? $report->created_at->format('H:i') : '-' }}</small>
+                    </td>
                     <td>{{ $report->user->name ?? '-' }}</td>
                     <td>
                         {{ $report->customer->company_name ?? '-' }}
@@ -139,7 +145,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="11" style="text-align: center; color: #999;">No data available</td>
+                    <td colspan="12" style="text-align: center; color: #999;">No data available</td>
                 </tr>
             @endforelse
         </tbody>
