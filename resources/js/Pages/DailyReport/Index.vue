@@ -73,6 +73,11 @@ const toggleSelectAll = () => {
     }
 };
 
+const toggleSelectAllMobile = () => {
+    selectAll.value = !selectAll.value;
+    toggleSelectAll();
+};
+
 watch(selectedIds, (newValue) => {
     if (!props.reports?.data || props.reports.data.length === 0) {
         selectAll.value = false;
@@ -332,13 +337,13 @@ const submitImport = () => {
 
 const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('id-ID', options);
+    return new Date(dateString).toLocaleDateString('en-US', options);
 };
 
 const formatTime = (dateString) => {
     if (!dateString) return '-';
     const date = new Date(dateString);
-    return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta' });
+    return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Jakarta' });
 };
 
 const getProgressData = (progressValue) => {
@@ -628,11 +633,19 @@ const getActivityBadgeClass = (code) => {
                                 </div>
                             </div>
 
-                            <!-- Create Daily Activity Button -->
-                            <button @click="openCreateModal" class="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition-all shadow-sm active:scale-95 whitespace-nowrap h-[38px]">
-                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-                                <span class="hidden sm:inline tracking-tight text-xs">Create Activity</span>
-                                <span class="sm:hidden text-xs">Create Daily Activity</span>
+                            <!-- Mobile Bulk Action Toggle -->
+                            <button v-if="reports.data.length > 0" @click="toggleSelectAllMobile" class="sm:hidden inline-flex w-full justify-center items-center gap-x-1.5 rounded-lg bg-white border border-emerald-600 px-4 py-2 text-sm font-bold text-emerald-700 shadow-sm hover:bg-emerald-50 transition-colors h-[38px]">
+                                <svg class="-ml-0.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                                {{ selectAll ? 'Deselect All' : 'Select All (Bulk)' }}
+                            </button>
+
+                            <!-- Add Activity Button -->
+                            <button @click="openCreateModal" class="inline-flex items-center justify-center w-full sm:w-auto gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-lg transition-all shadow-sm active:scale-95 whitespace-nowrap h-[38px]">
+                                <svg class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+                                <span class="hidden sm:inline tracking-tight text-xs">Add Activity</span>
+                                <span class="sm:hidden text-xs">Add Activity</span>
                             </button>
                         </div>
                     </div>

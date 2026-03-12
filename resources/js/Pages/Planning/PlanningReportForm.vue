@@ -3,6 +3,7 @@ import { useForm } from '@inertiajs/vue3';
 import { ref, watch, computed } from 'vue';
 import { Switch, SwitchGroup, SwitchLabel } from '@headlessui/vue';
 import Modal from '@/Components/Modal.vue';
+import VoiceTextarea from '@/Components/VoiceTextarea.vue';
 
 const props = defineProps({
     show: Boolean,
@@ -218,18 +219,17 @@ const submit = () => {
                     </div>
 
                     <!-- Result Description -->
-                    <div>
-                        <label class="block text-xs font-bold text-gray-900 mb-2">Result Description <span class="text-rose-400">*</span></label>
-                        <textarea v-model="form.result_description" required rows="3"
-                            class="w-full rounded-lg border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 placeholder:text-gray-300 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 resize-none transition-colors shadow-sm"
-                            placeholder="Briefly describe the outcome..."
-                        ></textarea>
-                        <div v-if="form.errors.result_description" class="text-rose-500 text-xs mt-1">{{ form.errors.result_description }}</div>
-                    </div>
+                    <VoiceTextarea 
+                        label="Result Description" 
+                        v-model="form.result_description" 
+                        placeholder="Briefly describe the outcome..." 
+                        :required="true"
+                    />
+                    <div v-if="form.errors.result_description" class="text-rose-500 text-xs mt-1">{{ form.errors.result_description }}</div>
 
                     <!-- Goal Achievement -->
                     <div class="rounded-lg border p-3.5 transition-colors duration-200"
-                         :class="form.is_success ? 'border-emerald-200 bg-emerald-50/50' : 'border-rose-200 bg-rose-50/50'">
+                        :class="form.is_success ? 'border-emerald-200 bg-emerald-50/50' : 'border-rose-200 bg-rose-50/50'">
                         <div class="flex items-center justify-between">
                             <div>
                                 <span class="text-sm font-bold" :class="form.is_success ? 'text-emerald-800' : 'text-rose-800'">
@@ -297,14 +297,13 @@ const submit = () => {
                         </div>
 
                         <!-- Next Plan Description -->
-                        <div>
-                            <label class="block text-xs font-bold text-gray-900 mb-2">Next Plan Description (Optional)</label>
-                            <textarea v-model="form.next_plan_description" rows="2"
-                                class="w-full rounded-lg border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 placeholder:text-gray-300 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 resize-none transition-colors shadow-sm"
-                                placeholder="Details for follow up..."
-                            ></textarea>
-                            <div v-if="form.errors.next_plan_description" class="text-rose-500 text-xs mt-1">{{ form.errors.next_plan_description }}</div>
-                        </div>
+                        <VoiceTextarea 
+                            label="Next Plan Description (Optional)" 
+                            v-model="form.next_plan_description" 
+                            placeholder="Details for follow up..." 
+                            :rows="3"
+                        />
+                        <div v-if="form.errors.next_plan_description" class="text-rose-500 text-xs mt-1">{{ form.errors.next_plan_description }}</div>
                     </div>
 
                     <!-- Closing Confirmation Message -->

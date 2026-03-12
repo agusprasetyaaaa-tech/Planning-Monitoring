@@ -102,6 +102,7 @@ class CustomerController extends Controller
             'customers' => $query->paginate((int) $perPage)->onEachSide(1)->withQueryString(),
             'filters' => $request->only(['search', 'sort', 'direction', 'team', 'user', 'per_page']),
             'teams' => \App\Models\Team::select('id', 'name', 'manager_id')->with('manager:id,name')->orderBy('name')->get(),
+            'products' => Product::select('id', 'name')->orderBy('name')->get(),
             'users' => \App\Models\User::select('id', 'name', 'team_id')
                 ->selectSub(function ($query) {
                     $query->select('id')

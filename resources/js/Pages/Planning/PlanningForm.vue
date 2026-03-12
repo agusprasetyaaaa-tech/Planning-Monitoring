@@ -3,6 +3,7 @@ import { useForm } from '@inertiajs/vue3';
 import { ref, watch, computed } from 'vue';
 import { Combobox, ComboboxInput, ComboboxButton, ComboboxOptions, ComboboxOption } from '@headlessui/vue';
 import Modal from '@/Components/Modal.vue';
+import VoiceTextarea from '@/Components/VoiceTextarea.vue';
 
 const props = defineProps({
     show: Boolean,
@@ -134,9 +135,9 @@ const isPreSelected = computed(() => !!props.selectedCustomer);
             <!-- Header -->
             <div class="px-4 py-4 sm:px-5 sm:py-4 bg-emerald-600 flex items-center justify-between rounded-t-xl">
                 <div class="pr-8 sm:pr-0">
-                    <h2 class="text-base sm:text-lg font-bold text-white leading-tight">Create Planning Activity</h2>
+                    <h2 class="text-base sm:text-lg font-bold text-white leading-tight">Schedule Activity</h2>
                     <p class="text-[9px] sm:text-xs text-emerald-100 flex items-center gap-1">
-                        Schedule your next business activity
+                        Plan your next business activity
                     </p>
                 </div>
                 <button @click="$emit('close')" class="p-2 -mr-2 text-emerald-100 hover:text-white transition-colors rounded-full hover:bg-emerald-500/50">
@@ -253,14 +254,13 @@ const isPreSelected = computed(() => !!props.selectedCustomer);
                     </div>
 
                     <!-- Description -->
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2">Description <span class="text-rose-400">*</span></label>
-                        <textarea v-model="form.description" required rows="3"
-                            class="w-full rounded-xl border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 placeholder:text-gray-300 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 resize-none transition-colors shadow-sm"
-                            placeholder="Enter plan details..."
-                        ></textarea>
-                        <div v-if="form.errors.description" class="text-rose-500 text-xs mt-1">{{ form.errors.description }}</div>
-                    </div>
+                    <VoiceTextarea 
+                        label="Description" 
+                        v-model="form.description" 
+                        placeholder="Enter plan details..." 
+                        :required="true"
+                    />
+                    <div v-if="form.errors.description" class="text-rose-500 text-xs mt-1">{{ form.errors.description }}</div>
                 </div>
 
                 <!-- Footer -->

@@ -12,7 +12,7 @@ class TeamController extends Controller
     public function index(Request $request)
     {
         $query = Team::select('id', 'name', 'manager_id', 'created_at')
-            ->with(['manager:id,name'])->withCount('members');
+            ->with(['manager:id,name', 'members:id,name,email,team_id'])->withCount('members');
 
         if ($request->search) {
             $query->where('name', 'like', '%' . $request->search . '%')
@@ -34,6 +34,7 @@ class TeamController extends Controller
         return Inertia::render('Teams/Index', [
             'teams' => $query->paginate(10)->withQueryString(),
             'filters' => $request->only(['search', 'sort', 'direction']),
+            'users' => User::select('id', 'name', 'team_id', 'email')->orderBy('name')->get(),
         ]);
     }
 
@@ -118,13 +119,13 @@ class TeamController extends Controller
 
         User::where('id', $request->user_id)->update(['team_id' => $team->id]);
 
-        return redirect()->route('teams.members', $team->id)->with('success', 'Member added successfully.');
+        return back()->with('success', 'Member added successfully.');
     }
 
     public function removeMember(Team $team, User $user)
     {
         $user->update(['team_id' => null]);
 
-        return redirect()->route('teams.members', $team->id)->with('success', 'Member removed successfully.');
+        return back()->with('success', 'Member removed successfully.');
     }
 }

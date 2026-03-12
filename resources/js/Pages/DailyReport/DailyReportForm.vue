@@ -3,6 +3,7 @@ import { useForm } from '@inertiajs/vue3';
 import { ref, watch, computed } from 'vue';
 import { Combobox, ComboboxInput, ComboboxButton, ComboboxOptions, ComboboxOption } from '@headlessui/vue';
 import Modal from '@/Components/Modal.vue';
+import VoiceTextarea from '@/Components/VoiceTextarea.vue';
 
 const props = defineProps({
     show: Boolean,
@@ -139,9 +140,9 @@ const submit = () => {
             <!-- Header -->
             <div class="px-4 py-4 sm:px-5 sm:py-4 bg-emerald-600 flex items-center justify-between rounded-t-xl">
                 <div class="pr-8 sm:pr-0">
-                    <h2 class="text-base sm:text-lg font-bold text-white leading-tight">{{ report ? 'Edit' : 'Create' }} Daily Activity</h2>
+                    <h2 class="text-base sm:text-lg font-bold text-white leading-tight">{{ report ? 'Edit' : 'Add' }} Daily Activity</h2>
                     <p class="text-[9px] sm:text-xs text-emerald-100 flex items-center gap-1">
-                        Record sales activity for today
+                        Record today's sales activity
                     </p>
                 </div>
                 <button @click="$emit('close')" class="p-2 -mr-2 text-emerald-100 hover:text-white transition-colors rounded-full hover:bg-emerald-500/50">
@@ -306,31 +307,30 @@ const submit = () => {
                         </div>
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2">Activity Description <span class="text-rose-400">*</span></label>
-                        <textarea v-model="form.description" required rows="3"
-                            class="w-full rounded-xl border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 placeholder:text-gray-300 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 resize-none transition-colors shadow-sm"
-                        ></textarea>
-                    </div>
+                    <VoiceTextarea 
+                        label="Activity Description" 
+                        v-model="form.description" 
+                        placeholder="Enter activity details..." 
+                        :required="true"
+                    />
                 </div>
 
                 <!-- Section: Results & Outcome (Identical to Create.vue) -->
                 <div class="px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100 space-y-4">
                     <div class="text-sm font-bold text-gray-700 mb-1">Results & Outcome</div>
 
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2">Result Description <span class="text-rose-400">*</span></label>
-                        <textarea v-model="form.result_description" required rows="3"
-                            class="w-full rounded-xl border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 placeholder:text-gray-300 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 resize-none transition-colors shadow-sm"
-                        ></textarea>
-                    </div>
+                    <VoiceTextarea 
+                        label="Result Description" 
+                        v-model="form.result_description" 
+                        placeholder="Enter activity results..." 
+                        :required="true"
+                    />
 
-                    <div>
-                        <label class="block text-sm font-bold text-gray-700 mb-2">Next Plan</label>
-                        <textarea v-model="form.next_plan" rows="3"
-                            class="w-full rounded-xl border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 placeholder:text-gray-300 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 resize-none transition-colors shadow-sm"
-                        ></textarea>
-                    </div>
+                    <VoiceTextarea 
+                        label="Next Plan" 
+                        v-model="form.next_plan" 
+                        placeholder="Enter next steps..." 
+                    />
 
                     <!-- Progress -->
                     <div>

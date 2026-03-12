@@ -23,6 +23,7 @@ class RoleController extends Controller
         return Inertia::render('Roles/Index', [
             'roles' => $query->paginate(10)->withQueryString(),
             'filters' => $request->only(['search']),
+            'permissions' => Permission::all(),
         ]);
     }
 

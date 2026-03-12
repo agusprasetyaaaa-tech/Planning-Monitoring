@@ -147,13 +147,7 @@ class PlanningController extends Controller
             $currentTab = $request->input('tab');
         } else {
             $today = TimeSetting::testingNow()->toDateString();
-            $currentTab = 'week1'; // Default
-            foreach ($ranges as $key => $range) {
-                if ($today >= $range[0] && $today <= $range[1]) {
-                    $currentTab = $key;
-                    break;
-                }
-            }
+            $currentTab = 'all'; // Set default tab to 'all' as requested
         }
 
         // Apply Tab-Specific Logic

@@ -13,6 +13,7 @@ import axios from 'axios';
 import NexusCalendar from '@/Components/NexusCalendar.vue';
 import PlanningForm from './PlanningForm.vue';
 import PlanningReportForm from './PlanningReportForm.vue';
+import VoiceTextarea from '@/Components/VoiceTextarea.vue';
 
 
 const page = usePage();
@@ -1680,7 +1681,7 @@ const formatDate = (dateStr) => {
 </script>
 
 <template>
-    <Head title="Planning" />
+    <Head title="Activity Planning" />
 
     <!-- Planning Reminder Popup -->
 
@@ -1692,7 +1693,7 @@ const formatDate = (dateStr) => {
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" /></svg>
                     <span>Back</span>
                 </Link>
-                <h1 class="text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight">Planning Activity</h1>
+                <h1 class="text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight">Activity Planning</h1>
             </div>
         </div>
 
@@ -1816,7 +1817,7 @@ const formatDate = (dateStr) => {
                                     <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                         <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
                                     </svg>
-                                    Create Plan
+                                    Schedule Activity
                                 </button>
                                 <div v-else class="inline-flex items-center gap-2 rounded-lg bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-500 cursor-not-allowed" title="Planning can only be created on Friday">
                                     <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">\
@@ -2061,7 +2062,7 @@ const formatDate = (dateStr) => {
                             <div class="flex items-center justify-center gap-6">
                                 <!-- Success -->
                                 <div class="flex flex-col items-center gap-1.5" :class="{ 'opacity-50': !canToggleMonitoring(customer), '!opacity-100': canToggleMonitoring(customer) }">
-                                    <span class="text-[9px] font-bold text-emerald-500">SUCCESS</span>
+                                    <span class="text-[9px] font-bold text-emerald-500">NEXT</span>
                                     <Switch
                                         :model-value="getMonitoringStatus(customer) === 'success'"
                                         @update:model-value="val => confirmMonitoring(customer.latest_plan?.id, val ? 'success' : 'pending', customer.company_name)"
@@ -2079,7 +2080,7 @@ const formatDate = (dateStr) => {
 
                                 <!-- Failed -->
                                 <div class="flex flex-col items-center gap-1.5" :class="{ 'opacity-50': !canToggleMonitoring(customer), '!opacity-100': canToggleMonitoring(customer) }">
-                                    <span class="text-[9px] font-bold text-red-500">FAILED</span>
+                                    <span class="text-[9px] font-bold text-red-500">FAIL</span>
                                     <Switch
                                         :model-value="getMonitoringStatus(customer) === 'failed'"
                                         @update:model-value="val => confirmMonitoring(customer.latest_plan?.id, val ? 'failed' : 'pending', customer.company_name)"
@@ -2484,7 +2485,7 @@ const formatDate = (dateStr) => {
                                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
                                                 </svg>
                                             </div>
-                                            <span class="text-[10px] font-bold text-white tracking-wider uppercase">FAILED</span>
+                                            <span class="text-[10px] font-bold text-white tracking-wider uppercase">FAIL</span>
                                         </div>
 
                                         <!-- ACTIVE STATE: SUCCESS -->
@@ -3240,7 +3241,7 @@ const formatDate = (dateStr) => {
                     <textarea 
                         id="actionNotes" 
                         v-model="actionNotes" 
-                        rows="2" 
+                        rows="3" 
                         class="block w-full rounded-lg border-gray-200 shadow-sm focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-sm resize-none transition-all placeholder:text-gray-400"
                         placeholder="Add a note..."
                     ></textarea>
@@ -3419,11 +3420,13 @@ const formatDate = (dateStr) => {
                             </div>
                          </div>
                         <!-- Desc -->
-                         <div>
-                            <label class="block text-xs font-bold text-gray-900 mb-2">Description</label>
-                            <textarea v-model="revisionForm.description" rows="3" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all text-sm resize-none shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="Enter plan description..."></textarea>
-                            <p v-if="revisionForm.errors.description" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.description }}</p>
-                        </div>
+                        <VoiceTextarea 
+                            label="Description" 
+                            v-model="revisionForm.description" 
+                            placeholder="Enter plan description..." 
+                            :required="true"
+                        />
+                        <p v-if="revisionForm.errors.description" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.description }}</p>
                     </div>
                 </div>
 
@@ -3475,11 +3478,13 @@ const formatDate = (dateStr) => {
                                   </div>
 
                                   <!-- Result -->
-                                  <div>
-                                     <label class="block text-xs font-bold text-gray-900 mb-2">Result Description</label>
-                                     <textarea v-model="revisionForm.result_description" rows="3" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all text-sm resize-none shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="Describe the outcome..."></textarea>
-                                     <p v-if="revisionForm.errors.result_description" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.result_description }}</p>
-                                  </div>
+                                  <VoiceTextarea 
+                                      label="Result Description" 
+                                      v-model="revisionForm.result_description" 
+                                      placeholder="Describe the outcome..." 
+                                      :required="true"
+                                  />
+                                  <p v-if="revisionForm.errors.result_description" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.result_description }}</p>
 
                                   <!-- Row 3: Progress & Goal Achievement -->
                                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 items-start">
@@ -3533,11 +3538,13 @@ const formatDate = (dateStr) => {
                                   </div>
                                   
                                    <!-- Next Desc -->
-                                  <div>
-                                     <label class="block text-xs font-bold text-gray-900 mb-2">Next Plan Description</label>
-                                     <textarea v-model="revisionForm.next_plan_description" rows="3" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none transition-all text-sm resize-none shadow-sm font-medium text-gray-600 placeholder:text-gray-300" placeholder="Plan description for next meeting..."></textarea>
-                                     <p v-if="revisionForm.errors.next_plan_description" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.next_plan_description }}</p>
-                                  </div>
+                                  <VoiceTextarea 
+                                      label="Next Plan Description" 
+                                      v-model="revisionForm.next_plan_description" 
+                                      placeholder="Plan description for next meeting..." 
+                                      :required="false"
+                                  />
+                                  <p v-if="revisionForm.errors.next_plan_description" class="mt-1 text-xs font-bold text-red-500">{{ revisionForm.errors.next_plan_description }}</p>
                              </div>
                         </div>
 
@@ -3612,13 +3619,13 @@ const formatDate = (dateStr) => {
                 </div>
 
                 <!-- Reason -->
-                <div>
-                    <label class="block text-xs font-bold text-gray-900 mb-2">Reason for Rescheduling</label>
-                    <textarea v-model="rescheduleForm.reason" rows="3" 
-                        class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm resize-none font-medium text-gray-700 shadow-sm placeholder:text-gray-300"
-                        placeholder="Please provide a brief reason for rescheduling (in English)..."></textarea>
-                    <p v-if="rescheduleForm.errors.reason" class="mt-1.5 text-xs font-bold text-red-500">{{ rescheduleForm.errors.reason }}</p>
-                </div>
+                <VoiceTextarea 
+                    label="Reason for Rescheduling" 
+                    v-model="rescheduleForm.reason" 
+                    placeholder="Please provide a brief reason for rescheduling (in English)..." 
+                    :required="true"
+                />
+                <p v-if="rescheduleForm.errors.reason" class="mt-1.5 text-xs font-bold text-red-500">{{ rescheduleForm.errors.reason }}</p>
 
                 <div class="flex flex-col sm:flex-row items-center justify-end gap-3 pt-4">
                     <button type="button" @click="closeRescheduleModal" class="w-full sm:w-auto px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors order-2 sm:order-1">

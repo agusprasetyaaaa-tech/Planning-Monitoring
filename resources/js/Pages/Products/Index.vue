@@ -1,9 +1,13 @@
 <script setup>
 import NexusLayout from '@/Layouts/NexusLayout.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref, watch, computed } from 'vue';
 import { debounce } from 'lodash';
+import Modal from '@/Components/Modal.vue';
+import InputError from '@/Components/InputError.vue';
 import ConfirmDeleteModal from '@/Components/ConfirmDeleteModal.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
 
 defineOptions({ layout: NexusLayout });
 
@@ -95,10 +99,56 @@ const closeModal = () => {
     }, 200);
 };
 
+// --- PRODUCT MODAL LOGIC ---
+const showProductModal = ref(false);
+const editingProduct = ref(null);
+const productForm = useForm({
+    name: '',
+});
+
+const openCreateModal = () => {
+    editingProduct.value = null;
+    productForm.reset();
+    productForm.clearErrors();
+    showProductModal.value = true;
+};
+
+const openEditModal = (product) => {
+    editingProduct.value = product;
+    productForm.name = product.name;
+    productForm.clearErrors();
+    showProductModal.value = true;
+};
+
+const closeProductModal = () => {
+    showProductModal.value = false;
+    setTimeout(() => {
+        editingProduct.value = null;
+        productForm.reset();
+    }, 200);
+};
+
+const submitProduct = () => {
+    if (editingProduct.value) {
+        productForm.put(route('products.update', editingProduct.value.id), {
+            onSuccess: () => closeProductModal(),
+        });
+    } else {
+        productForm.post(route('products.store'), {
+            onSuccess: () => closeProductModal(),
+        });
+    }
+};
+
 const pageNumbers = computed(() => {
     const links = props.products.links;
     return links.filter(link => !link.label.includes('&laquo;') && !link.label.includes('&raquo;'));
 });
+
+const toggleSelectAllMobile = () => {
+    selectAll.value = !selectAll.value;
+    toggleSelectAll();
+};
 </script>
 
 <template>
@@ -127,13 +177,21 @@ const pageNumbers = computed(() => {
                         />
                     </div>
 
-                    <div class="w-full sm:w-auto flex justify-end">
-                        <Link :href="route('products.create')" class="inline-flex w-full sm:w-auto justify-center items-center gap-x-1.5 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 transition-colors">
+                    <div class="w-full sm:w-auto flex flex-col sm:flex-row justify-end gap-2">
+                        <!-- Mobile Bulk Action Toggle -->
+                        <button v-if="products.data.length > 0" @click="toggleSelectAllMobile" class="sm:hidden inline-flex w-full justify-center items-center gap-x-1.5 rounded-md bg-white border border-emerald-600 px-3 py-2 text-sm font-bold text-emerald-700 shadow-sm hover:bg-emerald-50 transition-colors">
+                            <svg class="-ml-0.5 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                            </svg>
+                            {{ selectAll ? 'Deselect All' : 'Select All (Bulk)' }}
+                        </button>
+                        
+                        <button @click="openCreateModal" class="inline-flex w-full sm:w-auto justify-center items-center gap-x-1.5 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 transition-colors">
                             <svg class="-ml-0.5 h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
                                 <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
                             </svg>
                             Create
-                        </Link>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -199,11 +257,11 @@ const pageNumbers = computed(() => {
                             <td class="whitespace-nowrap px-6 py-4 text-xs text-gray-500">{{ product.customers_count }}</td>
                             <td class="whitespace-nowrap px-6 py-4 text-right text-xs font-medium">
                                 <div class="flex items-center justify-end gap-2">
-                                    <Link :href="route('products.edit', product.id)" class="text-gray-400 hover:text-emerald-600 transition-colors" title="Edit">
+                                    <button @click="openEditModal(product)" class="text-gray-400 hover:text-emerald-600 transition-colors" title="Edit">
                                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                           <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                                         </svg>
-                                    </Link>
+                                    </button>
                                     <button @click="confirmDelete(product)" class="text-gray-400 hover:text-red-600 transition-colors" title="Delete">
                                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                           <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
@@ -271,4 +329,54 @@ const pageNumbers = computed(() => {
         @close="closeModal"
         @confirm="executeDelete"
     />
+
+    <Modal :show="showProductModal" @close="closeProductModal" maxWidth="md">
+        <div class="font-sans">
+            <!-- Header -->
+            <div class="px-4 py-4 sm:px-5 sm:py-4 bg-emerald-600 flex items-center justify-between rounded-t-xl">
+                <div class="pr-8 sm:pr-0">
+                    <h2 class="text-base sm:text-lg font-bold text-white leading-tight">
+                        {{ editingProduct ? 'Edit Product' : 'Create New Product' }}
+                    </h2>
+                    <p class="text-[9px] sm:text-xs text-emerald-100 flex items-center gap-1">
+                        {{ editingProduct ? 'Update product details' : 'Add a new product to the system' }}
+                    </p>
+                </div>
+                <button @click="closeProductModal" type="button" class="p-2 -mr-2 text-emerald-100 hover:text-white transition-colors rounded-full hover:bg-emerald-500/50">
+                    <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <form @submit.prevent="submitProduct" class="max-h-[85vh] overflow-y-auto overflow-x-hidden">
+                <div class="p-4 sm:p-5 space-y-4 sm:space-y-5">
+                    <div>
+                        <label for="product_name" class="block text-sm font-bold text-gray-700 mb-2">Product Name <span class="text-rose-400">*</span></label>
+                        <input id="product_name" type="text" v-model="productForm.name" required autofocus
+                            class="w-full rounded-xl border-gray-200 bg-white py-2.5 px-3 text-sm text-gray-700 focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 transition-colors shadow-sm"
+                            placeholder="Enter product name"
+                        />
+                        <InputError class="mt-2" :message="productForm.errors.name" />
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="px-5 py-4 bg-gray-50/50 flex flex-col sm:flex-row items-center justify-end gap-3 rounded-b-xl border-t border-gray-100">
+                    <button type="button" @click="closeProductModal"
+                        class="w-full sm:w-auto px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors order-2 sm:order-1">
+                        Cancel
+                    </button>
+                    <button type="submit" :disabled="productForm.processing"
+                        class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl shadow-sm disabled:opacity-50 disabled:cursor-not-allowed order-1 sm:order-2 transition-all active:scale-95">
+                        <svg v-if="productForm.processing" class="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>{{ editingProduct ? 'Update Product' : 'Create Product' }}</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </Modal>
 </template>

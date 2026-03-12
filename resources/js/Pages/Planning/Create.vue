@@ -3,6 +3,7 @@ import NexusLayout from '@/Layouts/NexusLayout.vue';
 import { Head, useForm, Link } from '@inertiajs/vue3';
 import { watch, ref, computed, onMounted } from 'vue';
 import { Combobox, ComboboxInput, ComboboxButton, ComboboxOptions, ComboboxOption } from '@headlessui/vue';
+import VoiceTextarea from '@/Components/VoiceTextarea.vue';
 
 defineOptions({ layout: NexusLayout });
 
@@ -230,14 +231,13 @@ const submit = () => {
             </div>
 
             <!-- Description -->
-            <div>
-                 <label class="block text-sm font-bold text-gray-700 mb-2">Description Planning</label>
-                 <textarea v-model="form.description" required rows="4"
-                    class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200 outline-none transition-all text-sm resize-none shadow-sm placeholder:text-gray-400"
-                    placeholder="Enter planning description"
-                 ></textarea>
-                 <div v-if="form.errors.description" class="text-red-500 text-xs mt-1 font-medium">{{ form.errors.description }}</div>
-            </div>
+            <VoiceTextarea 
+                label="Description Planning" 
+                v-model="form.description" 
+                placeholder="Enter planning description" 
+                :required="true"
+            />
+            <div v-if="form.errors.description" class="text-red-500 text-xs mt-1 font-medium">{{ form.errors.description }}</div>
 
             <div class="flex items-center justify-end pt-4 border-t border-gray-50 mt-6">
                 <button type="submit" :disabled="form.processing"
