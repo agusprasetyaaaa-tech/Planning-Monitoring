@@ -46,33 +46,6 @@ const form = useForm({
     description: '',
 });
 
-// Update form when pre-selected props change
-watch(() => props.selectedCustomer, (newCustomer) => {
-    if (newCustomer) {
-        form.customer_id = newCustomer.id;
-        selectedCustomerRef.value = newCustomer;
-        if (newCustomer.product_id) {
-            form.product_id = newCustomer.product_id;
-        }
-    } else {
-        form.customer_id = '';
-        selectedCustomerRef.value = null;
-    }
-}, { immediate: true });
-
-watch(() => props.selectedDate, (newDate) => {
-    if (newDate) {
-        form.planning_date = formatDateForInput(newDate);
-    }
-});
-
-// Reset form when modal closes/opens for new plan
-watch(() => props.show, (isShow) => {
-    if (!isShow) {
-        // We don't necessarily reset here as Index.vue might manage the state,
-        // but it's good practice if it's a fresh 'Create' call.
-    }
-});
 
 const activityTypes = [
     'Call', 'Visit', 'Ent', 'Online Meeting', 'Survey', 
@@ -104,6 +77,33 @@ watch(selectedCustomerRef, (newCustomer) => {
     } else {
         form.customer_id = '';
         form.product_id = '';
+    }
+});
+
+// Update form when pre-selected props change
+watch(() => props.selectedCustomer, (newCustomer) => {
+    if (newCustomer) {
+        form.customer_id = newCustomer.id;
+        selectedCustomerRef.value = newCustomer;
+        if (newCustomer.product_id) {
+            form.product_id = newCustomer.product_id;
+        }
+    } else {
+        form.customer_id = '';
+        selectedCustomerRef.value = null;
+    }
+}, { immediate: true });
+
+watch(() => props.selectedDate, (newDate) => {
+    if (newDate) {
+        form.planning_date = formatDateForInput(newDate);
+    }
+});
+
+// Reset form when modal closes/opens for new plan
+watch(() => props.show, (isShow) => {
+    if (!isShow) {
+        // Optional reset logic
     }
 });
 
