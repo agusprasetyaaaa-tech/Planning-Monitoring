@@ -97,16 +97,18 @@ const executeDelete = () => {
     if (isBulkDelete.value) {
         router.delete(route('users.bulk-destroy'), {
             data: { ids: selectedIds.value },
-            preserveScroll: true,
             onSuccess: () => {
-                closeModal();
                 selectedIds.value = [];
                 selectAll.value = false;
-            }
+                closeModal();
+            },
+            preserveScroll: true,
+            preserveState: true,
         });
     } else {
         router.delete(route('users.destroy', itemToDelete.value.id), {
             preserveScroll: true,
+            preserveState: true,
             onSuccess: () => closeModal()
         });
     }
@@ -174,10 +176,14 @@ const generatePassword = () => {
 const submitUser = () => {
     if (editingUser.value) {
         userForm.put(route('users.update', editingUser.value.id), {
+            preserveScroll: true,
+            preserveState: true,
             onSuccess: () => closeUserModal(),
         });
     } else {
         userForm.post(route('users.store'), {
+            preserveScroll: true,
+            preserveState: true,
             onSuccess: () => closeUserModal(),
         });
     }

@@ -116,12 +116,14 @@ const isClosing = computed(() => {
 
 const submit = () => {
     if (!props.plan) return;
-    form.post(route('planning.report.store', props.plan.id), {
-        onSuccess: () => {
-            form.reset();
-            emit('close');
-        },
-    });
+        form.post(route('planning.report.store', props.plan.id), {
+            preserveScroll: true,
+            preserveState: true,
+            onSuccess: () => {
+                form.reset();
+                emit('close');
+            },
+        });
 };
 </script>
 

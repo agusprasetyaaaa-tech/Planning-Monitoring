@@ -43,9 +43,6 @@ const updateParams = debounce(() => {
         sort: sortField.value,
         direction: sortDirection.value,
         team: filterTeam.value,
-        sort: sortField.value,
-        direction: sortDirection.value,
-        team: filterTeam.value,
         user: filterUser.value,
         per_page: perPage.value,
     }, { 
@@ -174,6 +171,7 @@ const executeDelete = () => {
     if (deleteType.value === 'single') {
         router.delete(route('customers.destroy', deleteId.value), {
             preserveScroll: true,
+            preserveState: true,
             onSuccess: () => {
                 showDeleteConfirm.value = false;
                 // Success handled by global flash watcher
@@ -186,6 +184,7 @@ const executeDelete = () => {
         router.delete(route('customers.bulk-destroy'), {
             data: { ids: selectedIds.value },
             preserveScroll: true,
+            preserveState: true,
             onSuccess: () => {
                 selectedIds.value = [];
                 selectAll.value = false;
@@ -242,10 +241,14 @@ const closeCustomerModal = () => {
 const submitCustomer = () => {
     if (editingCustomer.value) {
         customerForm.put(route('customers.update', editingCustomer.value.id), {
+            preserveScroll: true,
+            preserveState: true,
             onSuccess: () => closeCustomerModal(),
         });
     } else {
         customerForm.post(route('customers.store'), {
+            preserveScroll: true,
+            preserveState: true,
             onSuccess: () => closeCustomerModal(),
         });
     }
@@ -280,21 +283,21 @@ const pageNumbers = computed(() => {
                             </svg>
                         </div>
                         <input v-model="search" type="text" placeholder="Search customers..." 
-                            class="block w-full rounded-md border-0 py-1.5 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-emerald-600 sm:text-sm sm:leading-6 transition-shadow"
+                            class="block w-full rounded-md border-0 py-2 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-emerald-600 sm:text-sm sm:leading-6 transition-all shadow-sm"
                         />
                     </div>
 
-                    <div class="flex flex-col md:flex-row gap-3 justify-between">
+                    <div class="flex flex-col lg:flex-row gap-3 justify-between items-center w-full">
                         <!-- Filters -->
-                        <div class="grid grid-cols-2 gap-2 w-full md:w-auto">
+                        <div class="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
                             <!-- Team Filter -->
-                            <select v-model="filterTeam" class="block w-full md:w-40 rounded-md border-0 py-1.5 pl-3 pr-8 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-emerald-600 sm:text-sm sm:leading-6">
+                            <select v-model="filterTeam" class="block w-full sm:w-48 rounded-md border-0 py-2 pl-3 pr-8 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-emerald-600 sm:text-sm sm:leading-6 transition-all shadow-sm">
                                 <option value="">All Teams</option>
                                 <option v-for="team in teams" :key="team.id" :value="team.id">{{ team.name }}</option>
                             </select>
-
+                            
                             <!-- User Filter -->
-                            <select v-model="filterUser" class="block w-full md:w-40 rounded-md border-0 py-1.5 pl-3 pr-8 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-emerald-600 sm:text-sm sm:leading-6">
+                            <select v-model="filterUser" class="block w-full sm:w-48 rounded-md border-0 py-2 pl-3 pr-8 text-gray-900 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-emerald-600 sm:text-sm sm:leading-6 transition-all shadow-sm">
                                 <option value="">All Users</option>
                                 <option v-for="user in filteredUsers" :key="user.id" :value="user.id">
                                     {{ user.name }}
@@ -303,30 +306,32 @@ const pageNumbers = computed(() => {
                         </div>
 
                         <!-- Actions -->
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full md:w-auto mt-3 sm:mt-0">
+                        <div class="flex flex-col sm:flex-row items-center gap-2 w-full lg:w-auto">
                             <!-- Mobile Bulk Action Toggle -->
-                            <button v-if="customers.data.length > 0" @click="toggleSelectAllMobile" class="sm:hidden flex items-center justify-center gap-x-1.5 rounded-md bg-white border border-emerald-600 px-3 py-2 text-sm font-bold text-emerald-700 shadow-sm hover:bg-emerald-50 transition-colors w-full">
+                            <button v-if="customers.data.length > 0" @click="toggleSelectAllMobile" class="sm:hidden flex items-center justify-center gap-x-1.5 rounded-md bg-white border border-emerald-600 px-4 py-2 text-sm font-bold text-emerald-700 shadow-sm hover:bg-emerald-50 transition-colors w-full">
                                 <svg class="-ml-0.5 h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                                 </svg>
                                 <span class="truncate">{{ selectAll ? 'Deselect All' : 'Select All (Bulk)' }}</span>
                             </button>
 
-                            <!-- Import Button -->
-                            <button @click="showImportModal = true" class="flex items-center justify-center gap-x-1.5 rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-colors w-full">
-                                <svg class="-ml-0.5 h-5 w-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                                </svg>
-                                <span class="truncate">Import</span>
-                            </button>
-                            
-                            <!-- Create Button -->
-                            <button @click="openCreateCustomerModal" class="flex items-center justify-center gap-x-1.5 rounded-md bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 transition-colors w-full bg-emerald-600">
-                                <svg class="-ml-0.5 h-5 w-5 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                                    <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-                                </svg>
-                                <span class="truncate">Create</span>
-                            </button>
+                            <div class="flex items-center gap-2 w-full sm:w-auto">
+                                <!-- Import Button -->
+                                <button @click="showImportModal = true" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-x-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-all hover:scale-[1.02] active:scale-95">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                                    </svg>
+                                    <span>Import</span>
+                                </button>
+                                
+                                <!-- Create Button -->
+                                <button @click="openCreateCustomerModal" class="flex-1 sm:flex-none inline-flex items-center justify-center gap-x-2 rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 transition-all hover:scale-[1.02] active:scale-95">
+                                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+                                    </svg>
+                                    <span>Create</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

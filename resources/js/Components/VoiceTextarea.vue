@@ -33,6 +33,14 @@ const showError = (msg) => {
     }, 5000);
 };
 
+const stopRecognition = () => {
+    isListening.value = false;
+    if (recognition.value) {
+        recognition.value.stop();
+        recognition.value = null;
+    }
+};
+
 const startRecognition = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     
@@ -41,7 +49,6 @@ const startRecognition = () => {
         return;
     }
 
-    // Double check for HTTPS or localhost
     if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
         showError('Security Error: Speech-to-Text requires a secure connection (HTTPS) or localhost.');
         return;
@@ -49,43 +56,55 @@ const startRecognition = () => {
 
     try {
         const r = new SpeechRecognition();
-        r.continuous = false;
-        r.interimResults = false;
+        r.continuous = true;
+        r.interimResults = true;
         r.lang = props.lang;
 
         r.onstart = () => {
             console.log('Voice recognition started...');
             isListening.value = true;
+            errorMessage.value = '';
         };
 
         r.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            console.log('Result received:', transcript);
-            
-            const newValue = props.modelValue 
-                ? props.modelValue + ' ' + transcript 
-                : transcript;
-                
-            emit('update:modelValue', newValue);
-            isListening.value = false;
+            let interimTranscript = '';
+            let finalTranscript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+            }
+
+            if (finalTranscript) {
+                const newValue = props.modelValue 
+                    ? props.modelValue.trim() + ' ' + finalTranscript.trim() 
+                    : finalTranscript.trim();
+                    
+                emit('update:modelValue', newValue);
+            }
         };
 
         r.onerror = (event) => {
             console.error('Speech recognition error:', event.error);
-            isListening.value = false;
-            
-            if (event.error === 'not-allowed') {
-                showError('Mic Access Denied: Please enable microphone access in browser settings (click lock icon next to URL).');
-            } else if (event.error === 'network') {
-                showError('Network Error: This feature requires an internet connection.');
-            } else if (event.error !== 'no-speech' && event.error !== 'aborted') {
+            if (event.error !== 'no-speech' && event.error !== 'aborted') {
                 showError('System Error: ' + event.error);
+                isListening.value = false;
             }
         };
 
         r.onend = () => {
             console.log('Voice recognition ended.');
-            isListening.value = false;
+            // Crucial: Only restart if we still intend to be listening
+            if (isListening.value) {
+                try {
+                    r.start();
+                } catch (e) {
+                    isListening.value = false;
+                }
+            }
         };
 
         r.start();
@@ -98,8 +117,8 @@ const startRecognition = () => {
 };
 
 const toggleListening = () => {
-    if (isListening.value && recognition.value) {
-        recognition.value.stop();
+    if (isListening.value) {
+        stopRecognition();
     } else {
         startRecognition();
     }
@@ -135,13 +154,11 @@ onUnmounted(() => {
                     <path d="M6 10.5a.75.75 0 0 1 .75.75 5.25 5.25 0 1 0 10.5 0 .75.75 0 0 1 1.5 0 6.75 6.75 0 1 1-13.5 0 .75.75 0 0 1 .75-.75Z" />
                     <path d="M12 18.75a.75.75 0 0 1 .75.75v2.25a.75.75 0 0 1-1.5 0V19.5a.75.75 0 0 1 .75-.75Z" />
                 </svg>
-                <div v-else class="flex gap-0.5 items-center">
-                    <span class="w-1 h-2 bg-rose-400 animate-bounce"></span>
-                    <span class="w-1 h-3 bg-rose-500 animate-bounce [animation-delay:-0.2s]"></span>
-                    <span class="w-1 h-2 bg-rose-400 animate-bounce [animation-delay:-0.4s]"></span>
+                <div v-else class="flex gap-1 items-center">
+                    <div class="w-2.5 h-2.5 bg-rose-600 rounded-sm animate-pulse"></div>
                 </div>
                 
-                <span class="whitespace-nowrap">{{ isListening ? 'Listening...' : 'Speech-to-Text' }}</span>
+                <span class="whitespace-nowrap">{{ isListening ? 'Stop Recording' : 'Speech-to-Text' }}</span>
             </button>
         </div>
 

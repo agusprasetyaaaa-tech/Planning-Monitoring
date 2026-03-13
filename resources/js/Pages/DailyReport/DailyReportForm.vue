@@ -35,34 +35,6 @@ const form = useForm({
     next_plan: props.report?.next_plan || '',
 });
 
-// Update form when report prop changes
-watch(() => props.report, (newReport) => {
-    if (newReport) {
-        form.user_id = newReport.user_id;
-        form.customer_id = newReport.customer_id;
-        form.product_id = newReport.product_id;
-        form.report_date = newReport.report_date;
-        form.activity_type = newReport.activity_type;
-        form.description = newReport.description;
-        form.location = newReport.location;
-        form.pic = newReport.pic;
-        form.position = newReport.position;
-        form.result_description = newReport.result_description;
-        form.progress = newReport.progress;
-        form.is_success = !!newReport.is_success;
-        form.next_plan = newReport.next_plan || '';
-        
-        selectedCustomer.value = props.customers.find(c => c.id === newReport.customer_id) || null;
-        selectedProduct.value = props.products.find(p => p.id === newReport.product_id) || null;
-    } else {
-        form.reset();
-        form.user_id = props.auth.user.id;
-        form.report_date = new Date().toISOString().substr(0, 10);
-        form.is_success = true;
-        selectedCustomer.value = null;
-        selectedProduct.value = null;
-    }
-}, { immediate: true });
 
 const activityTypes = [
     'Call', 'Visit', 'Ent', 'Online Meeting', 'Survey', 
@@ -120,6 +92,35 @@ const filteredProducts = computed(() => {
 watch(selectedProduct, (newProduct) => {
     form.product_id = newProduct?.id || '';
 });
+
+// Update form when report prop changes
+watch(() => props.report, (newReport) => {
+    if (newReport) {
+        form.user_id = newReport.user_id;
+        form.customer_id = newReport.customer_id;
+        form.product_id = newReport.product_id;
+        form.report_date = newReport.report_date;
+        form.activity_type = newReport.activity_type;
+        form.description = newReport.description;
+        form.location = newReport.location;
+        form.pic = newReport.pic;
+        form.position = newReport.position;
+        form.result_description = newReport.result_description;
+        form.progress = newReport.progress;
+        form.is_success = !!newReport.is_success;
+        form.next_plan = newReport.next_plan || '';
+        
+        selectedCustomer.value = props.customers.find(c => c.id === newReport.customer_id) || null;
+        selectedProduct.value = props.products.find(p => p.id === newReport.product_id) || null;
+    } else {
+        form.reset();
+        form.user_id = props.auth.user.id;
+        form.report_date = new Date().toISOString().substr(0, 10);
+        form.is_success = true;
+        selectedCustomer.value = null;
+        selectedProduct.value = null;
+    }
+}, { immediate: true });
 
 const submit = () => {
     if (props.report) {

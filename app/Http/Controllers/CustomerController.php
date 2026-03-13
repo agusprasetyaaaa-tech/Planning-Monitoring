@@ -27,7 +27,7 @@ class CustomerController extends Controller
 
         try {
             Excel::import(new CustomersImport, $request->file('file'));
-            return redirect()->route('customers.index')->with('success', 'Customers imported successfully!');
+            return back()->with('success', 'Customers imported successfully!');
         } catch (\Exception $e) {
             return back()->withErrors(['file' => 'Import failed: ' . $e->getMessage()]);
         }
@@ -42,7 +42,7 @@ class CustomerController extends Controller
 
         Customer::whereIn('id', $request->ids)->delete();
 
-        return redirect()->route('customers.index')->with('success', 'Customers deleted successfully');
+        return back()->with('success', 'Customers deleted successfully');
     }
 
     public function index(Request $request)
@@ -168,7 +168,7 @@ class CustomerController extends Controller
 
         Customer::create($request->all());
 
-        return redirect()->route('customers.index')->with('success', 'Customer created successfully.');
+        return back()->with('success', 'Customer created successfully.');
     }
 
     public function edit(Customer $customer)
@@ -203,14 +203,14 @@ class CustomerController extends Controller
 
         $customer->update($request->all());
 
-        return redirect()->route('customers.index')->with('success', 'Customer updated successfully.');
+        return back()->with('success', 'Customer updated successfully.');
     }
 
     public function destroy(Customer $customer)
     {
         $customer->delete();
 
-        return redirect()->route('customers.index')->with('success', 'Customer deleted successfully.');
+        return back()->with('success', 'Customer deleted successfully.');
     }
 
 

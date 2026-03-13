@@ -196,10 +196,11 @@ const closeRescheduleModal = () => {
 const submitReschedule = () => {
     if (!reschedulePlan.value) return;
     rescheduleForm.patch(route('planning.reschedule', reschedulePlan.value.id), {
+        preserveScroll: true,
+        preserveState: true,
         onSuccess: () => {
             closeRescheduleModal();
         },
-        preserveScroll: true,
     });
 };
 
@@ -208,10 +209,11 @@ const submitRevision = () => {
     
     // Use regular PATCH since we removed file upload (no need for POST + _method: PATCH spoofing anymore, but standard patch is fine)
     revisionForm.patch(route('planning.revise', revisionPlan.value.id), {
+        preserveScroll: true,
+        preserveState: true,
         onSuccess: () => {
              closeRevisionModal();
         },
-        preserveScroll: true,
     });
 };
 
@@ -330,8 +332,6 @@ const updateParams = debounce(() => {
         search: search.value, 
         team: filterTeam.value,
         user: filterUser.value,
-        sort: sortField.value,
-        direction: sortDirection.value,
         sort: sortField.value,
         direction: sortDirection.value,
         perPage: perPage.value,
@@ -1817,7 +1817,7 @@ const formatDate = (dateStr) => {
                                     <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                                         <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
                                     </svg>
-                                    Schedule Activity
+                                    Add Activity
                                 </button>
                                 <div v-else class="inline-flex items-center gap-2 rounded-lg bg-gray-200 px-4 py-2 text-sm font-semibold text-gray-500 cursor-not-allowed" title="Planning can only be created on Friday">
                                     <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">\
@@ -2163,7 +2163,7 @@ const formatDate = (dateStr) => {
                                 <svg class="h-5 w-5 opacity-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4.5v15m7.5-7.5h-15" />
                                 </svg>
-                                Create Plan
+                                Add Activity
                             </button>
                             
                             <!-- No Action (Hide for BOD) -->
@@ -2652,7 +2652,7 @@ const formatDate = (dateStr) => {
                                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="size-3">
                                                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                                             </svg>
-                                            Create Plan
+                                            Add Activity
                                         </button>
                                     </template>
                                 </div>
